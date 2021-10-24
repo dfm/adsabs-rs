@@ -30,7 +30,7 @@ pub struct SearchResponse {
     pub doctype: Option<DocType>,
     pub doi: Option<Vec<String>>,
     pub eid: Option<String>,
-    pub entdate: Option<String>, // Add YYYY-MM-DD format parsing?
+    pub entdate: Option<String>, // YYYY-MM-DD
     pub entry_date: Option<DateTime<Utc>>,
     pub esources: Option<Vec<String>>,
     pub facility: Option<Vec<String>>,
@@ -63,7 +63,7 @@ pub struct SearchResponse {
     #[serde(rename = "pub")]
     pub publication: Option<String>,
     pub pub_raw: Option<String>,
-    pub pubdate: Option<String>,
+    pub pubdate: Option<String>, // YYYY-MM-DD
     pub pubnote: Option<Vec<String>>,
     pub read_count: Option<u32>,
     pub reference: Option<Vec<String>>,
