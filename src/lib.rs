@@ -1,11 +1,12 @@
 mod auth;
 mod error;
 pub mod models;
-use reqwest;
-
 pub use error::{Error, Result};
 
-const API_BASE_URL: &str = "https://api.adsabs.harvard.edu/v1";
+use reqwest;
+use serde::Serialize;
+
+const API_BASE_URL: &str = "https://api.adsabs.harvard.edu/v1/";
 
 pub struct Client {
     base_url: reqwest::Url,
@@ -37,11 +38,31 @@ impl Client {
         })
     }
 
-    pub async fn get<P>(&self, path: P)
+    pub async fn get<A, P>(&self, path: A, parameters: Option<&P>) -> Result<reqwest::Response>
     where
-        P: AsRef<str>,
+        A: AsRef<str>,
+        P: Serialize + ?Sized,
     {
-        let url = self.base_url.join(path.as_ref()).unwrap();
+        self._get(self.absolute_url(path).unwrap(), parameters)
+            .await
+    }
+
+    pub async fn _get<P>(
+        &self,
+        url: impl reqwest::IntoUrl,
+        parameters: Option<&P>,
+    ) -> Result<reqwest::Response>
+    where
+        P: Serialize + ?Sized,
+    {
         let mut request = self.client.get(url);
+        if let Some(parameters) = parameters {
+            request = request.query(parameters);
+        }
+        Ok(request.send().await?)
+    }
+
+    pub fn absolute_url(&self, url: impl AsRef<str>) -> Result<reqwest::Url> {
+        Ok(self.base_url.join(url.as_ref())?)
     }
 }
