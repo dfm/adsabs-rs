@@ -3,9 +3,6 @@ mod error;
 pub mod models;
 pub use error::{Error, Result};
 
-use reqwest;
-use serde::Serialize;
-
 const API_BASE_URL: &str = "https://api.adsabs.harvard.edu/v1/";
 
 pub struct Client {
@@ -41,7 +38,7 @@ impl Client {
     pub async fn get<A, P>(&self, path: A, parameters: Option<&P>) -> Result<reqwest::Response>
     where
         A: AsRef<str>,
-        P: Serialize + ?Sized,
+        P: serde::Serialize + ?Sized,
     {
         self._get(self.absolute_url(path).unwrap(), parameters)
             .await
@@ -53,7 +50,7 @@ impl Client {
         parameters: Option<&P>,
     ) -> Result<reqwest::Response>
     where
-        P: Serialize + ?Sized,
+        P: serde::Serialize + ?Sized,
     {
         let mut request = self.client.get(url);
         if let Some(parameters) = parameters {
