@@ -1,5 +1,5 @@
 #[derive(serde::Serialize)]
-pub struct SearchBuilder<'ads, 'fl> {
+pub struct SearchBuilder<'ads> {
     #[serde(skip)]
     client: &'ads crate::Client,
     q: String,
@@ -7,23 +7,23 @@ pub struct SearchBuilder<'ads, 'fl> {
     rows: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     start: Option<i32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     #[serde(serialize_with = "comma_separated")]
-    fl: Option<&'fl [String]>,
+    fl: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     fq: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     sort: Option<String>,
 }
 
-impl<'ads, 'fl> SearchBuilder<'ads, 'fl> {
+impl<'ads> SearchBuilder<'ads> {
     pub fn new(client: &'ads crate::Client, query: impl Into<String>) -> Self {
         Self {
             client,
             q: query.into(),
             rows: None,
             start: None,
-            fl: None,
+            fl: Vec::new(),
             fq: None,
             sort: None,
         }
@@ -51,8 +51,8 @@ impl<'ads, 'fl> SearchBuilder<'ads, 'fl> {
     /// document id (`fl=id`). A non-exhaustive list of available fields is
     /// available at:
     /// https://adsabs.github.io/help/search/comprehensive-solr-term-list
-    pub fn fl(mut self, fl: &'fl (impl AsRef<[String]> + ?Sized)) -> Self {
-        self.fl = Some(fl.as_ref());
+    pub fn fl(mut self, fl: impl Into<String>) -> Self {
+        self.fl.push(fl.into());
         self
     }
 
@@ -97,10 +97,10 @@ pub enum SortOrder {
 }
 
 fn comma_separated<S: serde::Serializer>(
-    items: &Option<&[String]>,
+    items: &[String],
     serializer: S,
 ) -> Result<S::Ok, S::Error> {
-    serializer.serialize_str(&items.unwrap().join(","))
+    serializer.serialize_str(&items.join(","))
 }
 
 #[cfg(test)]
@@ -113,11 +113,11 @@ mod tests {
             .set_token("token")
             .build()
             .unwrap();
-        let fl = vec!["id".to_string(), "author".to_string()];
         let query = SearchBuilder::new(&client, "au:foreman-mackey")
             .rows(10)
             .start(5)
-            .fl(&fl)
+            .fl("id")
+            .fl("author")
             .fq("au:hogg")
             .sort("citation_count", SortOrder::Desc);
 
@@ -130,6 +130,23 @@ mod tests {
                 "fl": "id,author",
                 "fq": "au:hogg",
                 "sort": "citation_count+desc",
+            })
+        )
+    }
+
+    #[test]
+    fn vec_fls() {
+        let client = crate::ClientBuilder::new()
+            .set_token("token")
+            .build()
+            .unwrap();
+        let query = SearchBuilder::new(&client, "au:foreman-mackey").fl("id,author");
+
+        assert_eq!(
+            serde_json::to_value(query).unwrap(),
+            serde_json::json!({
+                "q": "au:foreman-mackey",
+                "fl": "id,author",
             })
         )
     }
