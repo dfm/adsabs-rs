@@ -1,6 +1,7 @@
 mod auth;
 mod error;
 pub mod models;
+pub mod search;
 pub use error::{Error, Result};
 
 const API_BASE_URL: &str = "https://api.adsabs.harvard.edu/v1/";
@@ -31,7 +32,7 @@ impl Client {
             .build()?;
         Ok(Client {
             base_url: reqwest::Url::parse(API_BASE_URL).unwrap(),
-            client: client,
+            client,
         })
     }
 
