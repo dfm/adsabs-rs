@@ -1,10 +1,13 @@
+use adsabs::{search, Client, Result};
+
 #[tokio::main]
-async fn main() -> adsabs::Result<()> {
-    let client = adsabs::Client::new()?;
-    let query = adsabs::search::Query::new_query("author:\"foreman-mackey\"");
-
-    let response = client.get("search/query", Some(&query)).await?;
+async fn main() -> Result<()> {
+    let client = Client::new()?;
+    let response = search::SearchBuilder::new(&client, "au:foreman-mackey")
+        .rows(10)
+        .sort("citation_count", search::SortOrder::Desc)
+        .send()
+        .await?;
     println!("{:?}", response);
-
     Ok(())
 }

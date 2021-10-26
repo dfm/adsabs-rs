@@ -4,10 +4,8 @@ use std::fs;
 pub fn get_token() -> Option<String> {
     if let Some(token) = token_from_env_vars() {
         Some(token)
-    } else if let Some(token) = token_from_home_dir() {
-        Some(token)
     } else {
-        None
+        token_from_home_dir()
     }
 }
 

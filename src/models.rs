@@ -125,7 +125,7 @@ mod tests {
             \"indexstamp\":\"2021-10-24T07:56:53.361Z\"
         }
         ";
-        let response: SearchResponse = serde_json::from_str(&data).unwrap();
+        let response: SearchResponse = serde_json::from_str(data).unwrap();
         assert_eq!(response.abs.unwrap(), "abstract");
         assert_eq!(response.aff.unwrap()[0], "aff1");
         assert!(matches!(response.database.unwrap()[0], Database::Astronomy));
