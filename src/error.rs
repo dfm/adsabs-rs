@@ -23,6 +23,7 @@ impl Error {
 pub enum ErrorKind {
     Io(io::Error),
     Reqwest(reqwest::Error),
+    InvalidHeaderValue(reqwest::header::InvalidHeaderValue),
     Url(url::ParseError),
     TokenError,
 }
@@ -39,6 +40,12 @@ impl From<reqwest::Error> for Error {
     }
 }
 
+impl From<reqwest::header::InvalidHeaderValue> for Error {
+    fn from(err: reqwest::header::InvalidHeaderValue) -> Error {
+        Error::new(ErrorKind::InvalidHeaderValue(err))
+    }
+}
+
 impl From<url::ParseError> for Error {
     fn from(err: url::ParseError) -> Error {
         Error::new(ErrorKind::Url(err))
@@ -50,6 +57,7 @@ impl StdError for Error {
         match *self.0 {
             ErrorKind::Io(ref err) => Some(err),
             ErrorKind::Reqwest(ref err) => Some(err),
+            ErrorKind::InvalidHeaderValue(ref err) => Some(err),
             ErrorKind::Url(ref err) => Some(err),
             ErrorKind::TokenError => None,
         }
@@ -61,6 +69,7 @@ impl fmt::Display for Error {
         match *self.0 {
             ErrorKind::Io(ref err) => err.fmt(f),
             ErrorKind::Reqwest(ref err) => err.fmt(f),
+            ErrorKind::InvalidHeaderValue(ref err) => err.fmt(f),
             ErrorKind::Url(ref err) => err.fmt(f),
             ErrorKind::TokenError => f.write_str("could not find API token"),
         }

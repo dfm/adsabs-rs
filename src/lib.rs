@@ -3,37 +3,78 @@ mod error;
 pub mod models;
 pub mod search;
 pub use error::{Error, Result};
+pub use search::SortOrder;
 
 const API_BASE_URL: &str = "https://api.adsabs.harvard.edu/v1/";
 
+pub struct ClientBuilder {
+    base_url: reqwest::Url,
+    token: Option<String>,
+    user_agent: String,
+}
+
+impl Default for ClientBuilder {
+    fn default() -> Self {
+        Self {
+            base_url: reqwest::Url::parse(API_BASE_URL).unwrap(),
+            token: None,
+            user_agent: String::from("adsabs-rust-client"),
+        }
+    }
+}
+
+impl ClientBuilder {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn base_url(mut self, url: impl Into<reqwest::Url>) -> Self {
+        self.base_url = url.into();
+        self
+    }
+
+    pub fn set_token(mut self, token: impl Into<String>) -> Self {
+        self.token = Some(token.into());
+        self
+    }
+
+    pub fn load_token(mut self) -> Self {
+        self.token = auth::get_token();
+        self
+    }
+
+    pub fn build(self) -> Result<Client> {
+        let mut hmap = reqwest::header::HeaderMap::new();
+        hmap.append(
+            reqwest::header::AUTHORIZATION,
+            format!("Bearer {}", self.token.ok_or_else(Error::token)?).parse()?,
+        );
+        let client = reqwest::Client::builder()
+            .user_agent(self.user_agent)
+            .default_headers(hmap)
+            .build()?;
+        Ok(Client {
+            base_url: self.base_url,
+            client,
+        })
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct Client {
     base_url: reqwest::Url,
     client: reqwest::Client,
 }
 
-impl Client {
-    pub fn new() -> Result<Client> {
-        if let Some(token) = auth::get_token() {
-            Client::new_with_token(&token)
-        } else {
-            Err(Error::token())
-        }
+impl Default for Client {
+    fn default() -> Self {
+        ClientBuilder::default().load_token().build().unwrap()
     }
+}
 
-    pub fn new_with_token(token: &str) -> Result<Client> {
-        let mut hmap = reqwest::header::HeaderMap::new();
-        hmap.append(
-            reqwest::header::AUTHORIZATION,
-            format!("Bearer {}", token).parse().unwrap(),
-        );
-        let client = reqwest::Client::builder()
-            .user_agent("adsabs-rust")
-            .default_headers(hmap)
-            .build()?;
-        Ok(Client {
-            base_url: reqwest::Url::parse(API_BASE_URL).unwrap(),
-            client,
-        })
+impl Client {
+    pub fn builder() -> ClientBuilder {
+        ClientBuilder::default()
     }
 
     pub async fn get<A, P>(&self, path: A, parameters: Option<&P>) -> Result<reqwest::Response>
@@ -62,5 +103,11 @@ impl Client {
 
     pub fn absolute_url(&self, url: impl AsRef<str>) -> Result<reqwest::Url> {
         Ok(self.base_url.join(url.as_ref())?)
+    }
+}
+
+impl Client {
+    pub fn search(&self, query: impl Into<String>) -> search::SearchBuilder {
+        search::SearchBuilder::new(self, query)
     }
 }

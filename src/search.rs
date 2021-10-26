@@ -1,8 +1,8 @@
 #[derive(serde::Serialize)]
-pub struct SearchBuilder<'ads, 'q, 'fl> {
+pub struct SearchBuilder<'ads, 'fl> {
     #[serde(skip)]
     client: &'ads crate::Client,
-    q: &'q str,
+    q: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     rows: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -16,11 +16,11 @@ pub struct SearchBuilder<'ads, 'q, 'fl> {
     sort: Option<String>,
 }
 
-impl<'ads, 'q, 'fl> SearchBuilder<'ads, 'q, 'fl> {
-    pub fn new(client: &'ads crate::Client, query: &'q str) -> Self {
+impl<'ads, 'fl> SearchBuilder<'ads, 'fl> {
+    pub fn new(client: &'ads crate::Client, query: impl Into<String>) -> Self {
         Self {
             client,
-            q: query,
+            q: query.into(),
             rows: None,
             start: None,
             fl: None,
@@ -109,7 +109,10 @@ mod tests {
 
     #[test]
     fn basic_query() {
-        let client = crate::Client::new_with_token("token").unwrap();
+        let client = crate::ClientBuilder::new()
+            .set_token("token")
+            .build()
+            .unwrap();
         let fl = vec!["id".to_string(), "author".to_string()];
         let query = SearchBuilder::new(&client, "au:foreman-mackey")
             .rows(10)
