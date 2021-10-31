@@ -1,3 +1,5 @@
+use crate::models::SearchResponse;
+
 #[derive(serde::Serialize)]
 pub struct SearchBuilder<'ads> {
     #[serde(skip)]
@@ -86,8 +88,18 @@ impl<'ads> SearchBuilder<'ads> {
     }
 
     /// Send the actual request.
-    pub async fn send(self) -> crate::Result<reqwest::Response> {
-        self.client.get("search/query", Some(&self)).await
+    pub async fn send(self) -> crate::Result<SearchResponse> {
+        let text = self
+            .client
+            .get("search/query", Some(&self))
+            .await?
+            .text()
+            .await?;
+        let data: serde_json::Value = serde_json::from_str(&text)?;
+        if let serde_json::Value::String(msg) = &data["error"]["msg"] {
+            return Err(msg.to_owned().into());
+        }
+        Ok(serde_json::from_value(data["response"].to_owned())?)
     }
 }
 

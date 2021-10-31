@@ -8,8 +8,6 @@ async fn main() -> adsabs::Result<()> {
         .fl("title")
         .send()
         .await?;
-    let data = response.text().await?;
-    let data: serde_json::Value = serde_json::from_str(&data).unwrap();
-    println!("{:?}", data);
+    println!("{:?}", response.docs);
     Ok(())
 }

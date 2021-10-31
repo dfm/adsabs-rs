@@ -25,6 +25,8 @@ pub enum ErrorKind {
     Reqwest(reqwest::Error),
     InvalidHeaderValue(reqwest::header::InvalidHeaderValue),
     Url(url::ParseError),
+    JsonError(serde_json::Error),
+    AdsError(String),
     TokenError,
 }
 
@@ -52,6 +54,18 @@ impl From<url::ParseError> for Error {
     }
 }
 
+impl From<serde_json::Error> for Error {
+    fn from(err: serde_json::Error) -> Error {
+        Error::new(ErrorKind::JsonError(err))
+    }
+}
+
+impl From<String> for Error {
+    fn from(msg: String) -> Error {
+        Error::new(ErrorKind::AdsError(msg))
+    }
+}
+
 impl StdError for Error {
     fn source(&self) -> Option<&(dyn StdError + 'static)> {
         match *self.0 {
@@ -59,6 +73,8 @@ impl StdError for Error {
             ErrorKind::Reqwest(ref err) => Some(err),
             ErrorKind::InvalidHeaderValue(ref err) => Some(err),
             ErrorKind::Url(ref err) => Some(err),
+            ErrorKind::JsonError(ref err) => Some(err),
+            ErrorKind::AdsError(_) => None,
             ErrorKind::TokenError => None,
         }
     }
@@ -71,6 +87,8 @@ impl fmt::Display for Error {
             ErrorKind::Reqwest(ref err) => err.fmt(f),
             ErrorKind::InvalidHeaderValue(ref err) => err.fmt(f),
             ErrorKind::Url(ref err) => err.fmt(f),
+            ErrorKind::JsonError(ref err) => err.fmt(f),
+            ErrorKind::AdsError(ref msg) => f.write_str(msg),
             ErrorKind::TokenError => f.write_str("could not find API token"),
         }
     }

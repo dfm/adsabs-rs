@@ -1,9 +1,17 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize, Default)]
-#[serde(default)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SearchResponse {
+    #[serde(rename = "numFound")]
+    pub num_found: u64,
+    pub start: u64,
+    pub docs: Vec<Document>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Default, Clone)]
+#[serde(default)]
+pub struct Document {
     #[serde(rename = "abstract")]
     pub abs: Option<String>,
     pub ack: Option<String>,
@@ -74,7 +82,7 @@ pub struct SearchResponse {
     pub year: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum Database {
     Astronomy,
@@ -82,7 +90,7 @@ pub enum Database {
     General,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum DocType {
     Article,
@@ -115,7 +123,7 @@ mod tests {
     use std::matches;
 
     #[test]
-    fn basic_deserialize() {
+    fn deserialize_document() {
         let data = "
         {
             \"abstract\": \"abstract\",
@@ -125,11 +133,33 @@ mod tests {
             \"indexstamp\":\"2021-10-24T07:56:53.361Z\"
         }
         ";
-        let response: SearchResponse = serde_json::from_str(data).unwrap();
+        let response: Document = serde_json::from_str(data).unwrap();
         assert_eq!(response.abs.unwrap(), "abstract");
         assert_eq!(response.aff.unwrap()[0], "aff1");
         assert!(matches!(response.database.unwrap()[0], Database::Astronomy));
         assert_eq!(response.entdate.unwrap(), "2021-09-25");
         assert_eq!(response.indexstamp.unwrap().year(), 2021);
+    }
+
+    #[test]
+    fn deserialize_search_response() {
+        let data = "
+        {
+            \"numFound\": 194,
+            \"start\": 12,
+            \"docs\": [
+                {
+                    \"id\": \"312911\"
+                },
+                {
+                    \"id\": \"1877482\"
+                }            
+            ]
+        }";
+        let response: SearchResponse = serde_json::from_str(data).unwrap();
+        assert_eq!(response.num_found, 194);
+        assert_eq!(response.start, 12);
+        assert_eq!(response.docs.len(), 2);
+        assert_eq!(response.docs[0].id.as_ref().unwrap(), "312911");
     }
 }
