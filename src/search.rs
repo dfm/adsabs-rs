@@ -1,6 +1,9 @@
 use crate::models::SearchResponse;
+use async_stream::try_stream;
+use futures_core::stream::Stream;
+use futures_util::stream::StreamExt;
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, Clone)]
 pub struct SearchBuilder<'ads> {
     #[serde(skip)]
     client: &'ads crate::Client,
@@ -100,6 +103,35 @@ impl<'ads> SearchBuilder<'ads> {
             return Err(msg.to_owned().into());
         }
         Ok(serde_json::from_value(data["response"].to_owned())?)
+    }
+
+    /// Get a stream of pages.
+    pub fn pages(self) -> impl Stream<Item = crate::Result<crate::models::SearchResponse>> + 'ads {
+        let mut page = self.start.unwrap_or(0);
+        let per_page = self.rows.unwrap_or(10);
+        Box::pin(try_stream! {
+            loop {
+                let builder = self.clone();
+                let current = builder.start(page).rows(per_page).send().await?;
+                if current.docs.len() == 0 {
+                    break;
+                }
+                yield current;
+                page += per_page;
+            }
+        })
+    }
+
+    /// Get a stream of search results.
+    pub fn into_stream(self) -> impl Stream<Item = crate::Result<crate::models::Document>> + 'ads {
+        Box::pin(try_stream! {
+            let mut pages = self.pages();
+            while let Some(page) = pages.next().await {
+                for doc in page?.docs {
+                    yield doc;
+                }
+            }
+        })
     }
 }
 

@@ -1,13 +1,17 @@
+use futures_util::stream::StreamExt;
+
 #[tokio::main]
 async fn main() -> adsabs::Result<()> {
-    let response = adsabs::Client::default()
+    let client = adsabs::Client::default();
+    let mut docs = client
         .search("author:foreman-mackey")
         .rows(10)
         .sort("citation_count", adsabs::SortOrder::Desc)
         .fl("id")
         .fl("title")
-        .send()
-        .await?;
-    println!("{:?}", response.docs);
+        .into_stream();
+    while let Some(doc) = docs.next().await {
+        println!("got {:?}", doc);
+    }
     Ok(())
 }
