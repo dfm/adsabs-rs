@@ -1,4 +1,4 @@
-use crate::models::SearchResponse;
+use crate::{error::Error, models::SearchResponse};
 use async_stream::try_stream;
 use futures_core::stream::Stream;
 use futures_util::stream::StreamExt;
@@ -100,7 +100,7 @@ impl<'ads> SearchBuilder<'ads> {
             .await?;
         let data: serde_json::Value = serde_json::from_str(&text)?;
         if let serde_json::Value::String(msg) = &data["error"]["msg"] {
-            return Err(msg.to_owned().into());
+            return Err(Error::AdsError(msg.to_owned()));
         }
         Ok(serde_json::from_value(data["response"].to_owned())?)
     }

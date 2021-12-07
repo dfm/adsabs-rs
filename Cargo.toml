@@ -1,6 +1,6 @@
 [package]
 name = "adsabs"
-version = "0.0.0-dev.0"
+version = "0.1.0"
 authors = ["Dan Foreman-Mackey <foreman.mackey@gmail.com>"]
 edition = "2018"
 readme = "README.md"
@@ -10,21 +10,21 @@ description = "A client for the SAO/NASA Astrophysics Data System API"
 license = "Apache-2.0"
 documentation = "https://docs.rs/adsabs"
 categories = ["science", "api-bindings"]
-exclude = ["/.github/"]
 
 [dependencies]
-reqwest = "0.11.6"
-futures-core = "0.3.17"
-futures-util = "0.3.17"
-async-stream = "0.3.2"
-serde = { version = "1.0.130", features = ["derive"] }
-serde_json = "1.0.68"
-chrono = { version = "0.4.19", features = ["serde"] }
-dirs = "4.0.0"
-url = "2.2.2"
+thiserror = "1.0"
+reqwest = "0.11"
+futures-core = "0.3"
+futures-util = "0.3"
+async-stream = "0.3"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+chrono = { version = "0.4", features = ["serde"] }
+dirs = "4.0"
+url = "2.2"
 
 [dev-dependencies]
-tokio = { version = "1.12.0", features = ["full"] }
+tokio = { version = "1.12", features = ["full"] }
 
 [[example]]
 name = "basic"

@@ -10,8 +10,11 @@ async fn main() -> adsabs::Result<()> {
         .fl("id")
         .fl("title")
         .into_stream();
-    while let Some(doc) = docs.next().await {
-        println!("got {:?}", doc);
+    while let Some(Ok(doc)) = docs.next().await {
+        println!(
+            "{:?}",
+            doc.title.unwrap_or_else(|| vec!["No title".to_owned()])
+        );
     }
     Ok(())
 }

@@ -47,7 +47,7 @@ impl ClientBuilder {
         let mut hmap = reqwest::header::HeaderMap::new();
         hmap.append(
             reqwest::header::AUTHORIZATION,
-            format!("Bearer {}", self.token.ok_or_else(Error::token)?).parse()?,
+            format!("Bearer {}", self.token.ok_or(Error::TokenError)?).parse()?,
         );
         let client = reqwest::Client::builder()
             .user_agent(self.user_agent)
