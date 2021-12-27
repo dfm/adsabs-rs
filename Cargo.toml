@@ -21,8 +21,8 @@ chrono = { version = "0.4", features = ["serde"] }
 dirs = "4.0"
 url = "2.2"
 
-[dev-dependencies]
-tokio = { version = "1.12", features = ["full"] }
+[workspace]
+members = ["macro"]
 
 [[example]]
 name = "basic"

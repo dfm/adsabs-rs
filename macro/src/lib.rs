@@ -9,7 +9,7 @@ use syn::{AttributeArgs, ItemStruct, NestedMeta};
 /// example, the following
 ///
 /// ```
-/// use discretionary::make_optional;
+/// use adsabs_macro::make_optional;
 ///
 /// #[make_optional]
 /// struct ExampleStruct {
