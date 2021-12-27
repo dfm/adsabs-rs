@@ -18,12 +18,12 @@ pub enum Error {
     #[error("URL parse error")]
     Url(#[from] url::ParseError),
 
-    #[error("JSON parsing error")]
-    JsonError(#[from] serde_json::Error),
+    #[error("JSON parse error")]
+    Json(#[from] serde_json::Error),
 
     #[error("")]
-    AdsError(String),
+    Ads(String),
 
-    #[error("")]
-    TokenError,
+    #[error("unable to load API token from environment variables or home directory")]
+    Token,
 }

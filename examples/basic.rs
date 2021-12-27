@@ -1,20 +1,14 @@
-use futures_util::stream::StreamExt;
-
-#[tokio::main]
-async fn main() -> adsabs::Result<()> {
-    let client = adsabs::Client::default();
-    let mut docs = client
+use adsabs::{search::SortOrder, Ads};
+fn main() {
+    let client = Ads::from_env().unwrap();
+    for doc in client
         .search("author:foreman-mackey")
         .rows(10)
-        .sort("citation_count", adsabs::SortOrder::Desc)
+        .sort("citation_count", &SortOrder::Desc)
         .fl("id")
         .fl("title")
-        .into_stream();
-    while let Some(Ok(doc)) = docs.next().await {
-        println!(
-            "{:?}",
-            doc.title.unwrap_or_else(|| vec!["No title".to_owned()])
-        );
+        .iter()
+    {
+        println!("{:?}", doc.unwrap().title);
     }
-    Ok(())
 }
