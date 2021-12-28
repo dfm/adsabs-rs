@@ -42,7 +42,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 // The maximum number of rows that the API allows
-const MAX_ROWS: usize = 2000;
+const MAX_ROWS: u64 = 2000;
 
 /// A builder for a search API query that can be used to customize and filter
 /// the query.
@@ -67,9 +67,9 @@ pub struct Query<'ads> {
     client: &'ads crate::Ads,
     q: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    rows: Option<usize>,
+    rows: Option<u64>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    start: Option<usize>,
+    start: Option<u64>,
     #[serde(serialize_with = "fl_defaults")]
     fl: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -83,8 +83,8 @@ pub struct Query<'ads> {
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Response {
     #[serde(rename = "numFound")]
-    pub num_found: usize,
-    pub start: usize,
+    pub num_found: u64,
+    pub start: u64,
     pub docs: Vec<Document>,
 }
 
@@ -104,15 +104,15 @@ pub struct Document {
     pub alternate_title: Vec<String>,
     pub arxiv_class: Vec<String>,
     pub author: Vec<String>,
-    pub author_count: usize,
+    pub author_count: u64,
     pub author_norm: Vec<String>,
     pub bibcode: String,
     pub bibgroup: Vec<String>,
     pub bibstem: Vec<String>,
     pub citation: Vec<String>,
-    pub citation_count: usize,
+    pub citation_count: u64,
     pub cite_read_boost: f32,
-    pub classic_factor: usize,
+    pub classic_factor: u64,
     pub comment: String,
     pub copyright: String,
     pub data: Vec<String>,
@@ -156,7 +156,7 @@ pub struct Document {
     pub pub_raw: String,
     pub pubdate: String, // YYYY-MM-DD
     pub pubnote: Vec<String>,
-    pub read_count: usize,
+    pub read_count: u64,
     pub reference: Vec<String>,
     pub simbid: Vec<String>,
     pub title: Vec<String>,
@@ -224,7 +224,7 @@ impl<'ads> Query<'ads> {
     /// to the value of start from the previous request, plus the number of
     /// results returned in the previous request. For the default values, set
     /// `start=10` to return the second page of results.
-    pub fn start(mut self, start: usize) -> Self {
+    pub fn start(mut self, start: u64) -> Self {
         self.start = Some(start);
         self
     }
@@ -269,7 +269,7 @@ impl<'ads> Query<'ads> {
     /// The default is `10` and the maximum is `2000`. [`IterDocs::limit`]
     /// should generally be used instead, for limiting the total number of
     /// records.
-    pub fn rows(mut self, rows: usize) -> Self {
+    pub fn rows(mut self, rows: u64) -> Self {
         self.rows = Some(rows);
         self
     }
@@ -280,7 +280,7 @@ impl<'ads> Query<'ads> {
     ///
     /// This method fails on HTTP errors, with messages from the server.
     pub fn send(&self) -> Result<Response> {
-        let data: serde_json::Value = self.client.get("search/query", Some(self))?.json()?;
+        let data: serde_json::Value = self.client.get("/search/query", Some(self))?.json()?;
         if let Some(serde_json::Value::String(msg)) = data.get("error").and_then(|x| x.get("msg")) {
             return Err(AdsError::Ads(msg.clone()));
         }
@@ -342,6 +342,7 @@ impl<'ads> Query<'ads> {
 /// # }
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[must_use]
 pub enum Sort {
     Asc(String),
     Desc(String),
@@ -379,9 +380,9 @@ impl ToString for Sort {
 #[must_use]
 pub struct IterDocs<'ads> {
     query: Query<'ads>,
-    num_found: usize,
-    start: usize,
-    limit: Option<usize>,
+    num_found: u64,
+    start: u64,
+    limit: Option<u64>,
     docs: <Vec<Document> as IntoIterator>::IntoIter,
 }
 
@@ -390,13 +391,13 @@ impl<'ads> IterDocs<'ads> {
     ///
     /// Every attempt will be made to minimize the number of API calls, so this
     /// should be preferred to using the [`std::iter::Iterator::take`] method.
-    pub fn limit(mut self, limit: usize) -> Self {
+    pub fn limit(mut self, limit: u64) -> Self {
         self.limit = Some(limit);
         self
     }
 
     #[inline]
-    fn page_size(&self) -> usize {
+    fn page_size(&self) -> u64 {
         MAX_ROWS.min(
             self.limit
                 .unwrap_or_else(|| self.query.rows.unwrap_or(MAX_ROWS)),
@@ -410,7 +411,7 @@ impl<'ads> IterDocs<'ads> {
         }
 
         if self.start > 0
-            && (self.start >= self.num_found || self.start >= self.limit.unwrap_or(usize::MAX))
+            && (self.start >= self.num_found || self.start >= self.limit.unwrap_or(u64::MAX))
         {
             return Ok(None);
         }

@@ -11,10 +11,14 @@
 //! adsabs = "0.1"
 //! ```
 //!
+//! For now, only the `/search` endpoint is supported, as described below. Other
+//! endpoints could be manually accessed using [`Ads::get`] directly, and pull
+//! requests would be welcome!
+//!
 //! ## Examples
 //!
-//! Then, to search for highly cited supernova papers, something like the
-//! following should do the trick:
+//! To search for highly cited supernova papers, something like the following
+//! should do the trick:
 //!
 //! ```no_run
 //! # fn doc() -> adsabs::Result<()> {
@@ -103,7 +107,7 @@ pub mod prelude {
     pub use crate::{search::Sort, Ads, AdsError};
 }
 
-const API_BASE_URL: &str = "https://api.adsabs.harvard.edu/v1/";
+const API_BASE_URL: &str = "https://api.adsabs.harvard.edu/v1";
 
 /// An interface to the NASA ADS API.
 ///
