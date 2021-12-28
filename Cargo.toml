@@ -10,6 +10,7 @@ description = "A Rust client for the SAO/NASA Astrophysics Data System API"
 license = "Apache-2.0"
 documentation = "https://docs.rs/adsabs"
 categories = ["science", "api-bindings"]
+exclude = [".github/*"]
 
 [dependencies]
 adsabs-macro = { version = "0.1.0", path = "macro" }
