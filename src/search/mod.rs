@@ -1,6 +1,9 @@
-pub mod models;
-use crate::error::{Error, Result};
+mod models;
 pub use crate::search::models::{Document, Response};
+use crate::{
+    error::{AdsError, Result},
+    SortOrder,
+};
 
 #[derive(serde::Serialize, Clone)]
 #[must_use]
@@ -12,26 +15,13 @@ pub struct Builder<'ads> {
     rows: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     start: Option<u32>,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    #[serde(serialize_with = "comma_separated")]
+    #[serde(serialize_with = "fl_defaults")]
     fl: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     fq: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    sort: Option<String>,
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum SortOrder {
-    Asc,
-    Desc,
-}
-
-fn comma_separated<S: serde::Serializer>(
-    items: &[String],
-    serializer: S,
-) -> Result<S::Ok, S::Error> {
-    serializer.serialize_str(&items.join(","))
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(serialize_with = "comma_separated")]
+    sort: Vec<String>,
 }
 
 impl<'ads> Builder<'ads> {
@@ -43,7 +33,7 @@ impl<'ads> Builder<'ads> {
             start: None,
             fl: Vec::new(),
             fq: None,
-            sort: None,
+            sort: Vec::new(),
         }
     }
 
@@ -92,8 +82,8 @@ impl<'ads> Builder<'ads> {
     /// the search engine. Other useful fields to sort on may be `date`,
     /// `read_count`, `first_author`, or `bibcode`.
     pub fn sort(mut self, field: &str, order: &SortOrder) -> Self {
-        self.sort = Some(format!(
-            "{}+{}",
+        self.sort.push(format!(
+            "{} {}",
             field,
             match order {
                 SortOrder::Asc => "asc",
@@ -103,15 +93,29 @@ impl<'ads> Builder<'ads> {
         self
     }
 
+    /// A shortcut for sorting results in ascending order.
+    ///
+    /// See [`Builder::sort`] for more information.
+    pub fn sort_asc(self, field: &str) -> Self {
+        self.sort(field, &SortOrder::Asc)
+    }
+
+    /// A shortcut for sorting results in descending order.
+    ///
+    /// See [`Builder::sort`] for more information.
+    pub fn sort_desc(self, field: &str) -> Self {
+        self.sort(field, &SortOrder::Desc)
+    }
+
     /// Submit the seach query.
     ///
     /// # Errors
     ///
     /// This method fails on HTTP errors, with messages from the server.
     pub fn send(&self) -> Result<Response> {
-        let data: serde_json::Value = self.client.get("search/query", Some(&self))?.json()?;
+        let data: serde_json::Value = self.client.get("search/query", Some(self))?.json()?;
         if let Some(serde_json::Value::String(msg)) = data.get("error").and_then(|x| x.get("msg")) {
-            return Err(Error::Ads(msg.clone()));
+            return Err(AdsError::Ads(msg.clone()));
         }
         Ok(serde_json::from_value(data["response"].clone())?)
     }
@@ -119,8 +123,8 @@ impl<'ads> Builder<'ads> {
     /// Get an iterator over all search results with transparent support for
     /// pagination.
     #[must_use]
-    pub fn iter(&self) -> Results {
-        Results {
+    pub fn iter(&self) -> PaginatedResults {
+        PaginatedResults {
             builder: self,
             num_found: 0,
             start: self.start.unwrap_or(0),
@@ -129,14 +133,14 @@ impl<'ads> Builder<'ads> {
     }
 }
 
-pub struct Results<'r> {
+pub struct PaginatedResults<'r> {
     builder: &'r Builder<'r>,
     num_found: u32,
     start: u32,
     docs: <Vec<Document> as IntoIterator>::IntoIter,
 }
 
-impl<'r> Results<'r> {
+impl<'r> PaginatedResults<'r> {
     fn try_next(&mut self) -> Result<Option<Document>> {
         if let Some(doc) = self.docs.next() {
             self.start += 1;
@@ -155,7 +159,7 @@ impl<'r> Results<'r> {
     }
 }
 
-impl<'r> Iterator for Results<'r> {
+impl<'r> Iterator for PaginatedResults<'r> {
     type Item = Result<Document>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -165,6 +169,21 @@ impl<'r> Iterator for Results<'r> {
             Err(err) => Some(Err(err)),
         }
     }
+}
+
+fn fl_defaults<S: serde::Serializer>(items: &[String], serializer: S) -> Result<S::Ok, S::Error> {
+    if items.is_empty() {
+        serializer.serialize_str("author,first_author,bibcode,id,year,title")
+    } else {
+        comma_separated(items, serializer)
+    }
+}
+
+fn comma_separated<S: serde::Serializer>(
+    items: &[String],
+    serializer: S,
+) -> Result<S::Ok, S::Error> {
+    serializer.serialize_str(&items.join(","))
 }
 
 #[cfg(test)]
@@ -190,7 +209,7 @@ mod tests {
                 "start": 5,
                 "fl": "id,author",
                 "fq": "au:hogg",
-                "sort": "citation_count+desc",
+                "sort": "citation_count desc",
             })
         )
     }

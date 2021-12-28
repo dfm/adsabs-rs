@@ -1,14 +1,72 @@
-#![doc = include_str!("../README.md")]
+//! # adsabs
+//!
+//! A Rust client for the SAO/NASA Astrophysics Data System API.
+//!
+//! ## Usage
+//!
+//! To use `adsabs` as a library, add it as a dependency in your `Cargo.toml`:
+//!
+//! ```toml
+//! [dependencies]
+//! adsabs = "0.1"
+//! ```
+//!
+//! Then, to search for highly cited supernova papers, something like the
+//! following should do the trick:
+//!
+//! ```no_run
+//! # fn doc() -> adsabs::Result<()> {
+//! use adsabs::prelude::*;
+//!
+//! let client = Ads::new("ADS_API_TOKEN")?;
+//! for doc in client.search("supernova")
+//!     .sort("citation_count", &SortOrder::Desc)
+//!     .iter()
+//!     .take(5)
+//! {
+//!     println!("{:?}", doc?.title);
+//! }
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! Don't forget to replace `ADS_API_TOKEN` with your [ADS settings page], or
+//! using another method as described in the [API token](#api-token) section
+//! below.
+//!
+//! The `query` parameter passed to [`Ads::search`] supports all the usual ADS
+//! search syntax. So, for example, if you want to search for papers by a
+//! particular first author, use something like the following:
+//!
+//! ```no_run
+//! # fn doc() -> adsabs::Result<()> {
+//! use adsabs::prelude::*;
+//!
+//! let client = Ads::new("ADS_API_TOKEN")?;
+//! for doc in client.search("author:\"^Dalcanton, J\"").iter().take(5) {
+//!     println!("{:?}", doc?.title);
+//! }
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## API token
+//!
+//! [ADS settings page]: https://ui.adsabs.harvard.edu/user/settings/token
 
 mod auth;
 mod error;
 pub mod search;
-pub use error::{Error, Result};
+pub use error::{AdsError, Result};
 
 use reqwest::{
     blocking::{Client, Response},
     header,
 };
+
+pub mod prelude {
+    pub use crate::{Ads, AdsError, SortOrder};
+}
 
 const API_BASE_URL: &str = "https://api.adsabs.harvard.edu/v1/";
 
@@ -24,9 +82,12 @@ const API_BASE_URL: &str = "https://api.adsabs.harvard.edu/v1/";
 /// # Examples
 ///
 /// ```rust
+/// # fn doc() -> adsabs::Result<()> {
 /// use adsabs::Ads;
-/// let api_token = "MY_ADS_API_KEY";
-/// let client = Ads::new(api_token);
+/// let api_token = "ADS_API_TOKEN";
+/// let client = Ads::new(api_token)?;
+/// # Ok(())
+/// # }
 /// ```
 #[derive(Clone)]
 pub struct Ads {
@@ -40,9 +101,9 @@ pub struct Ads {
 /// # Example
 ///
 /// ```rust
-/// # fn run() -> Result<(), adsabs::Error> {
+/// # fn run() -> adsabs::Result<()> {
 /// use adsabs::Ads;
-/// let api_token = "MY_ADS_API_KEY";
+/// let api_token = "ADS_API_TOKEN";
 /// let client = Ads::builder(api_token)
 ///     .user_agent("my-user-agent")
 ///     .build()?;
@@ -54,6 +115,13 @@ pub struct AdsBuilder {
     base_url: String,
     token: String,
     user_agent: String,
+}
+
+/// A token indicating an order for sorting query results.
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum SortOrder {
+    Asc,
+    Desc,
 }
 
 impl AdsBuilder {

@@ -1,11 +1,12 @@
 use std::io;
 use std::result;
 
-pub type Result<T, E = Error> = result::Result<T, E>;
+pub type Result<T, E = AdsError> = result::Result<T, E>;
 
+#[allow(clippy::module_name_repetitions)]
 #[derive(thiserror::Error, Debug)]
 #[non_exhaustive]
-pub enum Error {
+pub enum AdsError {
     #[error("I/O error")]
     Io(#[from] io::Error),
 

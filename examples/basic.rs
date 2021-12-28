@@ -1,14 +1,39 @@
-use adsabs::{search::SortOrder, Ads};
-fn main() {
-    let client = Ads::from_env().unwrap();
+use adsabs::prelude::*;
+
+fn main() -> Result<(), AdsError> {
+    let client = Ads::from_env()?;
+
+    println!("\nquery: 'supernova'");
     for doc in client
-        .search("author:foreman-mackey")
-        .rows(10)
+        .search("supernova")
         .sort("citation_count", &SortOrder::Desc)
-        .fl("id")
-        .fl("title")
         .iter()
+        .take(5)
     {
-        println!("{:?}", doc.unwrap().title);
+        let doc = doc?;
+        println!(
+            "{} ({}): {}",
+            doc.first_author.unwrap(),
+            doc.year.unwrap(),
+            doc.title.unwrap().join(" ")
+        );
     }
+
+    println!("\nquery: 'author:\"^Dalcanton, J\"'");
+    for doc in client
+        .search("author:\"^Dalcanton, J\"")
+        .sort("citation_count", &SortOrder::Desc)
+        .iter()
+        .take(5)
+    {
+        let doc = doc?;
+        println!(
+            "{} ({}): {}",
+            doc.first_author.unwrap(),
+            doc.year.unwrap(),
+            doc.title.unwrap().join(" ")
+        );
+    }
+
+    Ok(())
 }

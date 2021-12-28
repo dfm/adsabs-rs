@@ -4,9 +4,9 @@ version = "0.1.0"
 authors = ["Dan Foreman-Mackey <foreman.mackey@gmail.com>"]
 edition = "2018"
 readme = "README.md"
-homepage = "https://github.com/dfm/adsabs"
-repository = "https://github.com/dfm/adsabs.git"
-description = "A client for the SAO/NASA Astrophysics Data System API"
+homepage = "https://github.com/dfm/adsabs-rs"
+repository = "https://github.com/dfm/adsabs-rs.git"
+description = "A Rust client for the SAO/NASA Astrophysics Data System API"
 license = "Apache-2.0"
 documentation = "https://docs.rs/adsabs"
 categories = ["science", "api-bindings"]
@@ -20,6 +20,9 @@ serde_json = "1.0"
 chrono = { version = "0.4", features = ["serde"] }
 dirs = "4.0"
 url = "2.2"
+
+[dev-dependencies]
+httpmock = "0.6"
 
 [workspace]
 members = ["macro"]

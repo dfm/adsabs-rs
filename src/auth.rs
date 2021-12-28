@@ -1,4 +1,4 @@
-use crate::{Error, Result};
+use crate::{AdsError, Result};
 use std::env;
 use std::fs;
 
@@ -12,7 +12,7 @@ fn get_token_from_env_vars() -> Result<String> {
     } else if let Ok(token) = env::var("ADS_DEV_KEY") {
         Ok(token)
     } else {
-        Err(Error::Token)
+        Err(AdsError::Token)
     }
 }
 
@@ -25,5 +25,5 @@ fn get_token_from_home_dir() -> Result<String> {
             return Ok(token.trim().to_string());
         }
     }
-    Err(Error::Token)
+    Err(AdsError::Token)
 }
