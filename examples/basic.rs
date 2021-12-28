@@ -35,5 +35,21 @@ fn main() -> Result<(), AdsError> {
         );
     }
 
+    println!("\nquery: 'aff:\"Flatiron Institute\"'");
+    for doc in client
+        .search("aff:\"Flatiron Institute\"")
+        .sort_desc("date")
+        .iter()
+        .take(5)
+    {
+        let doc = doc?;
+        println!(
+            "{} ({}): {}",
+            doc.first_author.unwrap(),
+            doc.year.unwrap(),
+            doc.title.unwrap().join(" ")
+        );
+    }
+
     Ok(())
 }
