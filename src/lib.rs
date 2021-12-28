@@ -11,6 +11,8 @@
 //! adsabs = "0.1"
 //! ```
 //!
+//! ## Examples
+//!
 //! Then, to search for highly cited supernova papers, something like the
 //! following should do the trick:
 //!
@@ -20,9 +22,9 @@
 //!
 //! let client = Ads::new("ADS_API_TOKEN")?;
 //! for doc in client.search("supernova")
-//!     .sort("citation_count", &SortOrder::Desc)
-//!     .iter()
-//!     .take(5)
+//!     .sort("citation_count")
+//!     .iter_docs()
+//!     .limit(5)
 //! {
 //!     println!("{:?}", doc?.title);
 //! }
@@ -34,16 +36,16 @@
 //! using another method as described in the [API token](#api-token) section
 //! below.
 //!
-//! The `query` parameter passed to [`Ads::search`] supports all the usual ADS
-//! search syntax. So, for example, if you want to search for papers by a
-//! particular first author, use something like the following:
+//! The `query` parameter passed to [`Ads::search`] supports all the
+//! usual ADS search syntax. So, for example, if you want to search for papers
+//! by a particular first author, use something like the following:
 //!
 //! ```no_run
 //! # fn doc() -> adsabs::Result<()> {
 //! use adsabs::prelude::*;
 //!
 //! let client = Ads::new("ADS_API_TOKEN")?;
-//! for doc in client.search("author:\"^Dalcanton, J\"").iter().take(5) {
+//! for doc in client.search("author:\"^Dalcanton, J\"").iter_docs().limit(5) {
 //!     println!("{:?}", doc?.title);
 //! }
 //! # Ok(())
@@ -65,7 +67,7 @@ use reqwest::{
 };
 
 pub mod prelude {
-    pub use crate::{Ads, AdsError, SortOrder};
+    pub use crate::{search::Sort, Ads, AdsError};
 }
 
 const API_BASE_URL: &str = "https://api.adsabs.harvard.edu/v1/";
@@ -117,22 +119,15 @@ pub struct AdsBuilder {
     user_agent: String,
 }
 
-/// A token indicating an order for sorting query results.
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum SortOrder {
-    Asc,
-    Desc,
-}
-
 impl AdsBuilder {
     /// Constructs a new `AdsBuilder`.
     ///
     /// This is the same as [`Ads::builder`].
     pub fn new(token: &str) -> Self {
         Self {
-            base_url: API_BASE_URL.to_string(),
-            token: token.to_string(),
-            user_agent: "adsabs-rs/0.1.0".to_string(),
+            base_url: API_BASE_URL.to_owned(),
+            token: token.to_owned(),
+            user_agent: format!("adsabs-rs/{}", env!("CARGO_PKG_VERSION")),
         }
     }
 
@@ -159,19 +154,19 @@ impl AdsBuilder {
 
     /// Sets the base API URL to be used by this client.
     pub fn base_url(mut self, url: &str) -> Self {
-        self.base_url = url.to_string();
+        self.base_url = url.to_owned();
         self
     }
 
     /// Sets the API token to be used by this client.
     pub fn token(mut self, token: &str) -> Self {
-        self.token = token.to_string();
+        self.token = token.to_owned();
         self
     }
 
     /// Sets the `User-Agent` header to be used by this client.
     pub fn user_agent(mut self, user_agent: &str) -> Self {
-        self.user_agent = user_agent.to_string();
+        self.user_agent = user_agent.to_owned();
         self
     }
 
@@ -225,9 +220,9 @@ impl Ads {
     }
 
     /// Constructs a query for Search API endpoint that can be customized using
-    /// a [`search::Builder`].
-    pub fn search(&self, query: &str) -> search::Builder {
-        search::Builder::new(self, query)
+    /// a [`search::Query`].
+    pub fn search(&self, query: &str) -> search::Query {
+        search::Query::new(self, query)
     }
 
     /// Execute a general `GET` request to the API.

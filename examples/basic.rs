@@ -6,9 +6,9 @@ fn main() -> Result<(), AdsError> {
     println!("\nquery: 'supernova'");
     for doc in client
         .search("supernova")
-        .sort("citation_count", &SortOrder::Desc)
-        .iter()
-        .take(5)
+        .sort("citation_count")
+        .iter_docs()
+        .limit(5)
     {
         let doc = doc?;
         println!(
@@ -22,9 +22,9 @@ fn main() -> Result<(), AdsError> {
     println!("\nquery: 'author:\"^Dalcanton, J\"'");
     for doc in client
         .search("author:\"^Dalcanton, J\"")
-        .sort("citation_count", &SortOrder::Desc)
-        .iter()
-        .take(5)
+        .sort("citation_count")
+        .iter_docs()
+        .limit(5)
     {
         let doc = doc?;
         println!(
@@ -38,9 +38,9 @@ fn main() -> Result<(), AdsError> {
     println!("\nquery: 'aff:\"Flatiron Institute\"'");
     for doc in client
         .search("aff:\"Flatiron Institute\"")
-        .sort_desc("date")
-        .iter()
-        .take(5)
+        .sort(Sort::Asc("date".to_owned()))
+        .iter_docs()
+        .limit(5)
     {
         let doc = doc?;
         println!(
