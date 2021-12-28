@@ -1,3 +1,42 @@
+//! An interface to the Search endpoint of the ADS API.
+//!
+//! # Examples
+//!
+//! The primary interface is [`Query`], and this will generally be accessed via
+//! the [`crate::Ads::search`] method as follows:
+//!
+//! ```no_run
+//! # fn run() -> adsabs::Result<()> {
+//! use adsabs::Ads;
+//! let api_token = "ADS_API_TOKEN";
+//! let client = Ads::new(api_token)?;
+//! let query = client.search("supernova");
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! The results from the API will typically be pagniated, but this interface
+//! includes support for iterating over all results without worrying about this:
+//!
+//! ```no_run
+//! # fn run() -> adsabs::Result<()> {
+//! # use adsabs::Ads;
+//! # let api_token = "ADS_API_TOKEN";
+//! # let client = Ads::new(api_token)?;
+//! for doc in client.search("supernova").iter_docs().limit(5) {
+//!     println!("{:?}", doc?.title);
+//! }
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! But, **take note of the 'limit' call in the above example**, because
+//! iterating over all documents with the search term "supernova" will quickly
+//! cause you to hit your API limits. It would also be possible to use
+//! [`std::iter::Iterator::take`], instead of [`IterDocs::limit`], but the
+//! former gives us more information, and allows us to minimize the load on the
+//! API servers.
+
 use crate::error::{AdsError, Result};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -12,7 +51,7 @@ const MAX_ROWS: usize = 2000;
 ///
 /// This should generally be accessed via [`crate::Ads::search`] as follows:
 ///
-/// ```rust
+/// ```no_run
 /// # fn run() -> adsabs::Result<()> {
 /// # use adsabs::Ads;
 /// # let api_token = "ADS_API_TOKEN";
@@ -269,7 +308,7 @@ impl<'ads> Query<'ads> {
 /// By default, fields are sorted in descending order, so the following queries
 /// are equivalent:
 ///
-/// ```rust
+/// ```no_run
 /// # fn run() -> adsabs::Result<()> {
 /// # use adsabs::{Ads, search::Sort};
 /// # let api_token = "ADS_API_TOKEN";
@@ -281,7 +320,7 @@ impl<'ads> Query<'ads> {
 ///
 /// and
 ///
-/// ```rust
+/// ```no_run
 /// # fn run() -> adsabs::Result<()> {
 /// # use adsabs::{Ads, search::Sort};
 /// # let api_token = "ADS_API_TOKEN";
@@ -293,7 +332,7 @@ impl<'ads> Query<'ads> {
 ///
 /// Ascending order can be requested using:
 ///
-/// ```rust
+/// ```no_run
 /// # fn run() -> adsabs::Result<()> {
 /// # use adsabs::{Ads, search::Sort};
 /// # let api_token = "ADS_API_TOKEN";

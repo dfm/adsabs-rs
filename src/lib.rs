@@ -36,9 +36,9 @@
 //! using another method as described in the [API token](#api-token) section
 //! below.
 //!
-//! The `query` parameter passed to [`Ads::search`] supports all the
-//! usual ADS search syntax. So, for example, if you want to search for papers
-//! by a particular first author, use something like the following:
+//! The `query` parameter passed to [`Ads::search`] supports all the usual ADS
+//! search syntax. So, for example, if you want to search for papers by a
+//! particular first author, use something like the following:
 //!
 //! ```no_run
 //! # fn doc() -> adsabs::Result<()> {
@@ -53,6 +53,39 @@
 //! ```
 //!
 //! ## API token
+//!
+//! All queries to the ADS API must be authenticated with your API token from
+//! the [ADS settings page]. You can pass your token as a string directly to the
+//! client:
+//!
+//! ```rust
+//! # fn doc() -> adsabs::Result<()> {
+//! # use adsabs::prelude::*;
+//! let client = Ads::new("ADS_API_TOKEN")?;
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! Or you can load the token automatically from your environment using
+//! [`AdsBuilder::from_env`]:
+//!
+//! ```no_run
+//! # fn doc() -> adsabs::Result<()> {
+//! # use adsabs::prelude::*;
+//! let client = Ads::from_env()?;
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! In this case, the following locations are checked, in the listed order:
+//!
+//! 1. The `ADS_API_TOKEN` environment variable,
+//! 2. The `ADS_DEV_KEY` environment variable,
+//! 3. The contents of the `~/.ads/token` file, and
+//! 4. The contents of the `~/.ads/dev_key` file.
+//!
+//! Where these were chosen to be compatible with the locations supported by the
+//! Python client `ads`.
 //!
 //! [ADS settings page]: https://ui.adsabs.harvard.edu/user/settings/token
 
