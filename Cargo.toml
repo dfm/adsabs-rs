@@ -1,6 +1,6 @@
 [package]
 name = "adsabs"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Dan Foreman-Mackey <foreman.mackey@gmail.com>"]
 edition = "2018"
 readme = "README.md"
@@ -13,7 +13,7 @@ categories = ["science", "api-bindings"]
 exclude = [".github/*"]
 
 [dependencies]
-adsabs-macro = { version = "0.1.0", path = "macro" }
+adsabs-macro = { version = "0.1.1", path = "macro" }
 thiserror = "1.0"
 reqwest = { version = "0.11", features = ["blocking", "json"] }
 serde = { version = "1.0", features = ["derive"] }
