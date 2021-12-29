@@ -93,7 +93,6 @@ pub struct Response {
 /// [`Query::fl`].
 #[adsabs_macro::make_optional]
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
-#[serde(default)]
 pub struct Document {
     #[serde(rename = "abstract")]
     pub abs: String,
@@ -280,7 +279,7 @@ impl<'ads> Query<'ads> {
     ///
     /// This method fails on HTTP errors, with messages from the server.
     pub fn send(&self) -> Result<Response> {
-        let data: serde_json::Value = self.client.get("/search/query", Some(self))?.json()?;
+        let data: serde_json::Value = self.client.get("search/query", Some(self))?.json()?;
         if let Some(serde_json::Value::String(msg)) = data.get("error").and_then(|x| x.get("msg")) {
             return Err(AdsError::Ads(msg.clone()));
         }

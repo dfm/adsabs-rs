@@ -1,3 +1,4 @@
+//! An example showing basic usage examples from the docs.
 use adsabs::prelude::*;
 
 fn main() -> Result<(), AdsError> {

@@ -38,17 +38,23 @@ pub fn make_optional(
 
 fn impl_make_optional(_args: &[NestedMeta], obj: &mut ItemStruct) -> proc_macro2::TokenStream {
     match obj.fields {
-        syn::Fields::Named(ref mut fields) => fields.named.iter_mut().for_each(|field| {
-            let orig_ty = &field.ty;
-            field.ty = syn::Type::Verbatim(quote!(Option<#orig_ty>));
-        }),
-        syn::Fields::Unnamed(ref mut fields) => fields.unnamed.iter_mut().for_each(|field| {
-            let orig_ty = &field.ty;
-            field.ty = syn::Type::Verbatim(quote!(Option<#orig_ty>));
-        }),
+        syn::Fields::Named(ref mut fields) => fields.named.iter_mut().for_each(update_field),
+        syn::Fields::Unnamed(ref mut fields) => fields.unnamed.iter_mut().for_each(update_field),
         syn::Fields::Unit => {}
     }
     quote! {
         #obj
     }
+}
+
+fn update_field(field: &mut syn::Field) {
+    // Add skip_serializing_if for serde
+    let attr = syn::parse_quote!(
+        #[serde(skip_serializing_if = "Option::is_none")]
+    );
+    field.attrs.push(attr);
+
+    // Update the field to be an Option
+    let orig_ty = &field.ty;
+    field.ty = syn::Type::Verbatim(quote!(Option<#orig_ty>));
 }

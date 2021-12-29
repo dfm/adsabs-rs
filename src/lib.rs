@@ -107,7 +107,7 @@ pub mod prelude {
     pub use crate::{search::Sort, Ads, AdsError};
 }
 
-const API_BASE_URL: &str = "https://api.adsabs.harvard.edu/v1";
+const API_BASE_URL: &str = "https://api.adsabs.harvard.edu/v1/";
 
 /// An interface to the NASA ADS API.
 ///
