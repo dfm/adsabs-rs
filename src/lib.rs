@@ -56,6 +56,10 @@
 //! # }
 //! ```
 //!
+//! You can find executable examples of these and other sample usage in [the
+//! `examples` directory of the repository on
+//! GitHub](https://github.com/dfm/adsabs-rs/tree/main/examples).
+//!
 //! ## API token
 //!
 //! All queries to the ADS API must be authenticated with your API token from
