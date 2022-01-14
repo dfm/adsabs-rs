@@ -365,6 +365,12 @@ impl From<&str> for Sort {
     }
 }
 
+impl From<String> for Sort {
+    fn from(s: String) -> Self {
+        Sort::Desc(s)
+    }
+}
+
 impl ToString for Sort {
     fn to_string(&self) -> String {
         match self {

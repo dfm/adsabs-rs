@@ -14,20 +14,21 @@ exclude = [".github/*"]
 
 [dependencies]
 adsabs-macro = { version = "0.1.1", path = "macro" }
-thiserror = "1.0"
-reqwest = { version = "0.11", features = ["blocking", "json"] }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-chrono = { version = "0.4", features = ["serde"] }
-dirs = "4.0"
-url = "2.2"
+thiserror = "1.0.30"
+reqwest = { version = "0.11.9", features = ["blocking", "json"] }
+serde = { version = "1.0.133", features = ["derive"] }
+serde_json = "1.0.74"
+chrono = { version = "0.4.19", features = ["serde"] }
+dirs = "4.0.0"
+url = "2.2.2"
 
 [dev-dependencies]
-httpmock = "0.6"
+# httpmock = "0.6"
 html-escape = { version = "0.2.9" }
 
 [workspace]
-members = ["macro"]
+members = ["macro", "cli"]
+default-members = ["cli"]
 
 [[example]]
 name = "basic"
