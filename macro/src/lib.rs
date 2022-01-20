@@ -1,33 +1,6 @@
 use quote::quote;
 use syn::{AttributeArgs, ItemStruct, NestedMeta};
 
-/// Processes a struct to convert the fields to `Option`s
-///
-/// For now, this will always convert _all_ field types to `Option`, but the
-/// goal is to someday add filtering for skipping some fields. The usage is
-/// straightforward: just decorate your `struct` with `#[make_optional]`. For
-/// example, the following
-///
-/// ```
-/// use serde::{Deserialize, Serialize};
-/// use adsabs_macro::make_optional;
-///
-/// #[make_optional]
-/// #[derive(Serialize, Deserialize)]
-/// struct ExampleStruct {
-///     id: usize,
-///     name: String,
-/// }
-/// ```
-///
-/// will be re-written to something like
-///
-/// ```
-/// struct ExampleStruct {
-///     id: Option<usize>,
-///     name: Option<String>,
-/// }
-/// ```
 #[proc_macro_attribute]
 pub fn make_optional(
     args: proc_macro::TokenStream,

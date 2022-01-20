@@ -22,7 +22,7 @@ pub(crate) fn comma_separated<T: ToString, S: serde::Serializer>(
 ///
 /// ```no_run
 /// # fn run() -> adsabs::Result<()> {
-/// # use adsabs::{Ads, search::Sort};
+/// # use adsabs::{Ads, Sort};
 /// # let api_token = "ADS_API_TOKEN";
 /// # let client = Ads::new(api_token)?;
 /// client.search("supernova").sort("date");
@@ -34,7 +34,7 @@ pub(crate) fn comma_separated<T: ToString, S: serde::Serializer>(
 ///
 /// ```no_run
 /// # fn run() -> adsabs::Result<()> {
-/// # use adsabs::{Ads, search::Sort};
+/// # use adsabs::{Ads, Sort};
 /// # let api_token = "ADS_API_TOKEN";
 /// # let client = Ads::new(api_token)?;
 /// client.search("supernova").sort(Sort::desc("date"));
@@ -46,7 +46,7 @@ pub(crate) fn comma_separated<T: ToString, S: serde::Serializer>(
 ///
 /// ```no_run
 /// # fn run() -> adsabs::Result<()> {
-/// # use adsabs::{Ads, search::Sort};
+/// # use adsabs::{Ads, Sort};
 /// # let api_token = "ADS_API_TOKEN";
 /// # let client = Ads::new(api_token)?;
 /// client.search("supernova").sort(Sort::asc("date"));

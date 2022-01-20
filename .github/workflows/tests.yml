@@ -43,7 +43,7 @@ jobs:
       - name: Run cargo test
         uses: actions-rs/cargo@v1
         with:
-          command: test --all
+          command: test
 
   lint:
     name: Lint

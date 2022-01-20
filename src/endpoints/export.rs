@@ -83,6 +83,11 @@ impl<'ads> Export<'ads> {
 
 #[cfg(feature = "blocking")]
 impl<'ads> Export<'ads> {
+    /// Synchronously submit the request.
+    ///
+    /// # Errors
+    ///
+    /// This method fails on HTTP errors, with messages from the server.
     pub fn send(&self) -> Result<String> {
         let response: Response = self
             .client
@@ -97,6 +102,11 @@ impl<'ads> Export<'ads> {
 
 #[cfg(feature = "async")]
 impl<'ads> Export<'ads> {
+    /// Asynchronously submit the request.
+    ///
+    /// # Errors
+    ///
+    /// This method fails on HTTP errors, with messages from the server.
     pub async fn send_async(&self) -> Result<String> {
         let response: Response = self
             .client

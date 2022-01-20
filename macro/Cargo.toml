@@ -15,9 +15,6 @@ categories = ["science", "api-bindings"]
 proc-macro = true
 
 [dependencies]
-syn = { version = "1.0", features = ["full"] }
-quote = "1.0"
-proc-macro2 = "1.0"
-
-[dev-dependencies]
-serde = { version = "1.0.133", features = ["derive"] }
+syn = { version = "1.0.84", features = ["full"] }
+quote = "1.0.14"
+proc-macro2 = "1.0.36"

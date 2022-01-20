@@ -9,7 +9,7 @@ build:
 	@cargo build
 
 test:
-	@cargo test --all
+	@cargo test
 
 format:
 	@rustup component add rustfmt 2> /dev/null
