@@ -1,4 +1,4 @@
-//! An example showing basic usage examples from the docs.
+//! An example showing how to access the Search API.
 use adsabs::{prelude::*, Document};
 
 fn main() -> Result<(), AdsError> {

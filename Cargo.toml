@@ -30,17 +30,7 @@ futures-util = { version = "0.3", optional = true }
 async-stream = { version = "0.3", optional = true }
 
 [dev-dependencies]
-# httpmock = "0.6"
 html-escape = { version = "0.2.9" }
 
 [workspace]
 members = ["macro", "cli"]
-default-members = ["cli"]
-
-[[example]]
-name = "basic"
-path = "examples/basic.rs"
-
-[[example]]
-name = "dfm"
-path = "examples/dfm.rs"

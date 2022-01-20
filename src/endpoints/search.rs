@@ -2,7 +2,7 @@
 //!
 //! # Examples
 //!
-//! The primary interface is [`Query`], and this will generally be accessed via
+//! The primary interface is [`Search`], and this will generally be accessed via
 //! the [`crate::Ads::search`] method as follows:
 //!
 //! ```no_run
@@ -37,7 +37,8 @@
 //! former gives us more information, and allows us to minimize the load on the
 //! API servers.
 
-use crate::error::{AdsError, Result};
+use super::{comma_separated, Sort};
+use crate::error::Result;
 #[cfg(feature = "async")]
 use futures_util::Stream;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -61,9 +62,9 @@ const MAX_ROWS: u64 = 2000;
 /// # Ok(())
 /// # }
 /// ```
-#[derive(serde::Serialize, Clone)]
+#[derive(Serialize, Clone)]
 #[must_use]
-pub struct Query<'ads> {
+pub struct Search<'ads> {
     #[serde(skip)]
     client: &'ads crate::Ads,
     q: String,
@@ -80,53 +81,6 @@ pub struct Query<'ads> {
     sort: Vec<Sort>,
 }
 
-/// Used to set the order for sorting query results.
-///
-/// # Examples
-///
-/// By default, fields are sorted in descending order, so the following queries
-/// are equivalent:
-///
-/// ```no_run
-/// # fn run() -> adsabs::Result<()> {
-/// # use adsabs::{Ads, search::Sort};
-/// # let api_token = "ADS_API_TOKEN";
-/// # let client = Ads::new(api_token)?;
-/// client.search("supernova").sort("date");
-/// # Ok(())
-/// # }
-/// ```
-///
-/// and
-///
-/// ```no_run
-/// # fn run() -> adsabs::Result<()> {
-/// # use adsabs::{Ads, search::Sort};
-/// # let api_token = "ADS_API_TOKEN";
-/// # let client = Ads::new(api_token)?;
-/// client.search("supernova").sort(Sort::desc("date"));
-/// # Ok(())
-/// # }
-/// ```
-///
-/// Ascending order can be requested using:
-///
-/// ```no_run
-/// # fn run() -> adsabs::Result<()> {
-/// # use adsabs::{Ads, search::Sort};
-/// # let api_token = "ADS_API_TOKEN";
-/// # let client = Ads::new(api_token)?;
-/// client.search("supernova").sort(Sort::asc("date"));
-/// # Ok(())
-/// # }
-/// ```
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[must_use]
-pub enum Sort {
-    Asc(String),
-    Desc(String),
-}
-
 /// A single page of responses from the search API.
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Response<T> {
@@ -136,7 +90,7 @@ pub struct Response<T> {
     pub docs: Vec<T>,
 }
 
-impl<'ads> Query<'ads> {
+impl<'ads> Search<'ads> {
     /// Build a new query.
     ///
     /// This should generally be accessed using [`crate::Ads::search`] instead
@@ -211,20 +165,17 @@ impl<'ads> Query<'ads> {
 }
 
 #[cfg(feature = "blocking")]
-impl<'ads> Query<'ads> {
-    /// Submit the seach query.
+impl<'ads> Search<'ads> {
+    /// Submit the search query.
     ///
     /// # Errors
     ///
     /// This method fails on HTTP errors, with messages from the server.
-    pub fn blocking_send<T: DeserializeOwned>(&self) -> Result<Response<T>> {
+    pub fn send<T: DeserializeOwned>(&self) -> Result<Response<T>> {
         let data: serde_json::Value = self
             .client
             .blocking_get("search/query", Some(self))?
             .json()?;
-        if let Some(serde_json::Value::String(msg)) = data.get("error").and_then(|x| x.get("msg")) {
-            return Err(AdsError::Ads(msg.clone()));
-        }
         Ok(serde_json::from_value(data["response"].clone())?)
     }
 
@@ -244,7 +195,7 @@ impl<'ads> Query<'ads> {
 
 #[cfg(feature = "blocking")]
 mod iter {
-    use super::{Query, Result, MAX_ROWS};
+    use super::{Result, Search, MAX_ROWS};
     use serde::de::DeserializeOwned;
 
     /// An iterator over the results of a query with transparent support for
@@ -252,7 +203,7 @@ mod iter {
     #[allow(clippy::module_name_repetitions)]
     #[must_use]
     pub struct SearchIter<'ads, T: DeserializeOwned> {
-        pub(crate) query: Query<'ads>,
+        pub(crate) query: Search<'ads>,
         pub(crate) num_found: u64,
         pub(crate) start: u64,
         pub(crate) limit: Option<u64>,
@@ -294,7 +245,7 @@ mod iter {
                 .clone()
                 .start(self.start)
                 .rows(self.page_size())
-                .blocking_send()?;
+                .send()?;
             self.num_found = response.num_found;
             self.start = response.start + 1;
             self.docs = response.docs.into_iter();
@@ -316,22 +267,19 @@ mod iter {
 }
 
 #[cfg(feature = "async")]
-impl<'ads> Query<'ads> {
+impl<'ads> Search<'ads> {
     /// Asynchronously submit the seach query.
     ///
     /// # Errors
     ///
     /// This method fails on HTTP errors, with messages from the server.
-    pub async fn async_send<T: DeserializeOwned>(&self) -> Result<Response<T>> {
+    pub async fn send_async<T: DeserializeOwned>(&self) -> Result<Response<T>> {
         let data: serde_json::Value = self
             .client
             .async_get("search/query", Some(self))
             .await?
             .json()
             .await?;
-        if let Some(serde_json::Value::String(msg)) = data.get("error").and_then(|x| x.get("msg")) {
-            return Err(AdsError::Ads(msg.clone()));
-        }
         Ok(serde_json::from_value(data["response"].clone())?)
     }
 
@@ -347,7 +295,7 @@ impl<'ads> Query<'ads> {
         Box::pin(try_stream! {
             loop {
                 let builder = self.clone();
-                let current = builder.start(offset).rows(per_page).async_send().await?;
+                let current = builder.start(offset).rows(per_page).send_async().await?;
                 let num = current.docs.len();
                 if num == 0 {
                     break;
@@ -361,40 +309,6 @@ impl<'ads> Query<'ads> {
     }
 }
 
-// Helpers for serialization and deserialization of sort orders
-impl Sort {
-    /// Build an ascending sort on a field.
-    pub fn asc(field: &str) -> Self {
-        Sort::Asc(field.to_owned())
-    }
-
-    /// Build a descending sort on a field.
-    pub fn desc(field: &str) -> Self {
-        Sort::Desc(field.to_owned())
-    }
-}
-
-impl From<&str> for Sort {
-    fn from(s: &str) -> Self {
-        Sort::Desc(s.to_owned())
-    }
-}
-
-impl From<String> for Sort {
-    fn from(s: String) -> Self {
-        Sort::Desc(s)
-    }
-}
-
-impl ToString for Sort {
-    fn to_string(&self) -> String {
-        match self {
-            Sort::Asc(fl) => format!("{} asc", fl),
-            Sort::Desc(fl) => format!("{} desc", fl),
-        }
-    }
-}
-
 // Helpers for serialization of search queries:
 fn fl_defaults<S: serde::Serializer>(items: &[String], serializer: S) -> Result<S::Ok, S::Error> {
     if items.is_empty() {
@@ -402,17 +316,6 @@ fn fl_defaults<S: serde::Serializer>(items: &[String], serializer: S) -> Result<
     } else {
         comma_separated(items, serializer)
     }
-}
-
-fn comma_separated<T: ToString, S: serde::Serializer>(
-    items: &[T],
-    serializer: S,
-) -> Result<S::Ok, S::Error> {
-    let items = items
-        .iter()
-        .map(std::string::ToString::to_string)
-        .collect::<Vec<_>>();
-    serializer.serialize_str(&items.join(","))
 }
 
 #[cfg(test)]
@@ -464,7 +367,7 @@ mod tests {
     #[test]
     fn basic_query() {
         let client = crate::Ads::new("token").unwrap();
-        let query = Query::new(&client, "au:foreman-mackey")
+        let query = Search::new(&client, "au:foreman-mackey")
             .rows(10)
             .start(5)
             .fl("id")
@@ -488,7 +391,7 @@ mod tests {
     #[test]
     fn vec_fls() {
         let client = crate::Ads::new("token").unwrap();
-        let query = Query::new(&client, "au:foreman-mackey").fl("id,author");
+        let query = Search::new(&client, "au:foreman-mackey").fl("id,author");
 
         assert_eq!(
             serde_json::to_value(query).unwrap(),

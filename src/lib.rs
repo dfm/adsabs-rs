@@ -98,16 +98,18 @@
 //! [ADS settings page]: https://ui.adsabs.harvard.edu/user/settings/token
 
 mod auth;
+mod endpoints;
 mod error;
 mod model;
-pub mod search;
+
+pub use endpoints::{export, search, Sort};
 pub use error::{AdsError, Result};
 pub use model::Document;
 
 use reqwest::header;
 
 pub mod prelude {
-    pub use crate::{search::Sort, Ads, AdsError, Document};
+    pub use crate::{export::FormatType, Ads, AdsError, Document, Sort};
 }
 
 const API_BASE_URL: &str = "https://api.adsabs.harvard.edu/v1/";
@@ -275,9 +277,15 @@ impl Ads {
     }
 
     /// Constructs a query for Search API endpoint that can be customized using
-    /// a [`search::Query`].
-    pub fn search(&self, query: &str) -> search::Query {
-        search::Query::new(self, query)
+    /// a [`search::Search`].
+    pub fn search(&self, query: &str) -> search::Search {
+        search::Search::new(self, query)
+    }
+
+    /// Constructs a query for Export API endpoint that can be customized using
+    /// a [`export::Export`].
+    pub fn export(&self, format_type: export::FormatType, bibcode: &[String]) -> export::Export {
+        export::Export::new(self, format_type, bibcode)
     }
 
     fn absolute_url(&self, url: &str) -> Result<reqwest::Url> {
