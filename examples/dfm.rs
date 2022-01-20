@@ -9,11 +9,12 @@ fn main() -> Result<(), AdsError> {
         .search("author:\"Foreman-Mackey\" AND (doctype:\"article\" OR doctype:\"eprint\")")
         .fl("id,title,author,doi,year,pubdate,pub,volume,page,identifier,doctype,citation_count,bibcode")
         .sort("date")
-        .iter_docs().map(|doc|
+        .iter::<Document>().map(|doc|
     {
         // Here I'm just removing HTML encoding since the API will encode
         // characters like '&' as '&amp;', for example. 
-        doc.map(|mut doc|{
+        doc
+        .map(|mut doc|{
             doc.title = doc.title.map(|t| {
                 t.iter()
                     .map(|t| html_escape::decode_html_entities(t).to_string())

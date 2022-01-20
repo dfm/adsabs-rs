@@ -9,9 +9,11 @@ use syn::{AttributeArgs, ItemStruct, NestedMeta};
 /// example, the following
 ///
 /// ```
+/// use serde::{Deserialize, Serialize};
 /// use adsabs_macro::make_optional;
 ///
 /// #[make_optional]
+/// #[derive(Serialize, Deserialize)]
 /// struct ExampleStruct {
 ///     id: usize,
 ///     name: String,

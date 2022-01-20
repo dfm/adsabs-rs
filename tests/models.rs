@@ -1,4 +1,4 @@
-use adsabs::search::Document;
+use adsabs::Document;
 use std::fs;
 use std::path::PathBuf;
 

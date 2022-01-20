@@ -41,12 +41,12 @@ fn main() -> Result<()> {
             token,
             sort,
             limit,
-        } => search(query, token, sort, limit),
+        } => search(&query, token, sort, limit),
     }
 }
 
 fn search(
-    query: Vec<String>,
+    query: &[String],
     token: Option<String>,
     sort: Option<String>,
     limit: Option<u64>,
@@ -63,7 +63,7 @@ fn search(
         query = query.sort(field);
     }
 
-    let mut iter_docs = query.iter_docs();
+    let mut iter_docs = query.iter::<Document>();
     if let Some(limit) = limit {
         iter_docs = iter_docs.limit(limit);
     }
