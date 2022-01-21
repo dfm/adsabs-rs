@@ -1,0 +1,22 @@
+[package]
+name = "adsabs-cli"
+version = "0.1.2"
+authors = ["Dan Foreman-Mackey <foreman.mackey@gmail.com>"]
+edition = "2018"
+readme = "README.md"
+homepage = "https://github.com/dfm/adsabs-rs"
+repository = "https://github.com/dfm/adsabs-rs.git"
+description = "A command line client for the SAO/NASA Astrophysics Data System API"
+license = "Apache-2.0"
+documentation = "https://docs.rs/adsabs"
+categories = ["science", "api-bindings"]
+default-run = "adsabs"
+
+[dependencies]
+adsabs = { version = "0.1.2", path = ".." }
+anyhow = "1.0.52"
+clap = { version = "3.0.7", features = ["derive"] }
+dirs = "4.0.0"
+serde = { version = "1.0.133", features = ["derive"] }
+serde_json = "1.0.74"
+toml = "0.5.8"

@@ -2,7 +2,7 @@
 //!
 //! # Examples
 //!
-//! The primary interface is [`Query`], and this will generally be accessed via
+//! The primary interface is [`Search`], and this will generally be accessed via
 //! the [`crate::Ads::search`] method as follows:
 //!
 //! ```no_run
@@ -23,8 +23,8 @@
 //! # use adsabs::Ads;
 //! # let api_token = "ADS_API_TOKEN";
 //! # let client = Ads::new(api_token)?;
-//! for doc in client.search("supernova").iter_docs().limit(5) {
-//!     println!("{:?}", doc?.title);
+//! for doc in client.search("supernova").iter().limit(5) {
+//!     println!("{:?}", doc?);
 //! }
 //! # Ok(())
 //! # }
@@ -33,13 +33,15 @@
 //! But, **take note of the 'limit' call in the above example**, because
 //! iterating over all documents with the search term "supernova" will quickly
 //! cause you to hit your API limits. It would also be possible to use
-//! [`std::iter::Iterator::take`], instead of [`IterDocs::limit`], but the
+//! [`std::iter::Iterator::take`], instead of [`SearchIter::limit`], but the
 //! former gives us more information, and allows us to minimize the load on the
 //! API servers.
 
-use crate::error::{AdsError, Result};
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
+use super::{comma_separated, Sort};
+use crate::error::Result;
+#[cfg(feature = "async")]
+use futures_util::Stream;
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 // The maximum number of rows that the API allows
 const MAX_ROWS: u64 = 2000;
@@ -60,9 +62,9 @@ const MAX_ROWS: u64 = 2000;
 /// # Ok(())
 /// # }
 /// ```
-#[derive(serde::Serialize, Clone)]
+#[derive(Serialize, Clone)]
 #[must_use]
-pub struct Query<'ads> {
+pub struct Search<'ads> {
     #[serde(skip)]
     client: &'ads crate::Ads,
     q: String,
@@ -81,126 +83,14 @@ pub struct Query<'ads> {
 
 /// A single page of responses from the search API.
 #[derive(Serialize, Deserialize, Clone)]
-pub struct Response {
+pub struct Response<T> {
     #[serde(rename = "numFound")]
     pub num_found: u64,
     pub start: u64,
-    pub docs: Vec<Document>,
+    pub docs: Vec<T>,
 }
 
-/// A `Document` returned from a search query. All of the fields are `Option`s
-/// and will only be `Some` if that field was requested in the query using
-/// [`Query::fl`].
-#[adsabs_macro::make_optional]
-#[derive(Debug, Serialize, Deserialize, Default, Clone)]
-pub struct Document {
-    #[serde(rename = "abstract")]
-    pub abs: String,
-    pub ack: String,
-    pub aff: Vec<String>,
-    pub aff_id: Vec<String>,
-    pub alternate_bibcode: Vec<String>,
-    pub alternate_title: Vec<String>,
-    pub arxiv_class: Vec<String>,
-    pub author: Vec<String>,
-    pub author_count: u64,
-    pub author_norm: Vec<String>,
-    pub bibcode: String,
-    pub bibgroup: Vec<String>,
-    pub bibstem: Vec<String>,
-    pub citation: Vec<String>,
-    pub citation_count: u64,
-    pub cite_read_boost: f32,
-    pub classic_factor: u64,
-    pub comment: String,
-    pub copyright: String,
-    pub data: Vec<String>,
-    pub database: Vec<Database>,
-    pub date: DateTime<Utc>,
-    pub doctype: DocType,
-    pub doi: Vec<String>,
-    pub eid: String,
-    pub entdate: String, // YYYY-MM-DD
-    pub entry_date: DateTime<Utc>,
-    pub esources: Vec<String>,
-    pub facility: Vec<String>,
-    pub first_author: String,
-    pub first_author_norm: String,
-    pub grant: Vec<String>,
-    pub grant_agencies: Vec<String>,
-    pub grant_id: Vec<String>,
-    pub id: String,
-    pub identifier: Vec<String>,
-    pub indexstamp: DateTime<Utc>,
-    pub inst: Vec<String>,
-    pub isbn: Vec<String>,
-    pub issn: Vec<String>,
-    pub issue: String,
-    pub keyword: Vec<String>,
-    pub keyword_norm: Vec<String>,
-    pub keyword_schema: Vec<String>,
-    pub lang: String,
-    pub links_data: Vec<String>,
-    pub nedid: Vec<String>,
-    pub nedtype: Vec<String>,
-    pub orcid_pub: Vec<String>,
-    pub orcid_other: Vec<String>,
-    pub orcid_user: Vec<String>,
-    pub page: Vec<String>,
-    pub page_count: String,
-    pub page_range: String,
-    pub property: Vec<String>,
-    #[serde(rename = "pub")]
-    pub publication: String,
-    pub pub_raw: String,
-    pub pubdate: String, // YYYY-MM-DD
-    pub pubnote: Vec<String>,
-    pub read_count: u64,
-    pub reference: Vec<String>,
-    pub simbid: Vec<String>,
-    pub title: Vec<String>,
-    pub vizier: Vec<String>,
-    pub volume: String,
-    pub year: String,
-}
-
-/// The databases supported by the search API.
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "lowercase")]
-pub enum Database {
-    Astronomy,
-    Physics,
-    General,
-}
-
-/// The document types supported by the search API.
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "lowercase")]
-pub enum DocType {
-    Article,
-    Eprint,
-    Inproceedings,
-    Inbook,
-    Abstract,
-    Book,
-    Bookreview,
-    Catalog,
-    Circular,
-    Erratum,
-    Mastersthesis,
-    Newsletter,
-    Obituary,
-    Phdthesis,
-    Pressrelease,
-    Proceedings,
-    Proposal,
-    Software,
-    Talk,
-    Techreport,
-    Misc,
-}
-
-impl<'ads> Query<'ads> {
+impl<'ads> Search<'ads> {
     /// Build a new query.
     ///
     /// This should generally be accessed using [`crate::Ads::search`] instead
@@ -272,25 +162,28 @@ impl<'ads> Query<'ads> {
         self.rows = Some(rows);
         self
     }
+}
 
-    /// Submit the seach query.
+#[cfg(feature = "blocking")]
+impl<'ads> Search<'ads> {
+    /// Submit the search query.
     ///
     /// # Errors
     ///
     /// This method fails on HTTP errors, with messages from the server.
-    pub fn send(&self) -> Result<Response> {
-        let data: serde_json::Value = self.client.get("search/query", Some(self))?.json()?;
-        if let Some(serde_json::Value::String(msg)) = data.get("error").and_then(|x| x.get("msg")) {
-            return Err(AdsError::Ads(msg.clone()));
-        }
+    pub fn send<T: DeserializeOwned>(&self) -> Result<Response<T>> {
+        let data: serde_json::Value = self
+            .client
+            .blocking_get("search/query", Some(self))?
+            .json()?;
         Ok(serde_json::from_value(data["response"].clone())?)
     }
 
     /// Get an iterator over all search results with transparent support for
     /// pagination.
-    pub fn iter_docs(self) -> IterDocs<'ads> {
+    pub fn iter<T: DeserializeOwned>(self) -> iter::SearchIter<'ads, T> {
         let start = self.start.unwrap_or(0);
-        IterDocs {
+        iter::SearchIter {
             query: self,
             num_found: 0,
             start,
@@ -300,143 +193,119 @@ impl<'ads> Query<'ads> {
     }
 }
 
-/// Used to set the order for sorting query results.
-///
-/// # Examples
-///
-/// By default, fields are sorted in descending order, so the following queries
-/// are equivalent:
-///
-/// ```no_run
-/// # fn run() -> adsabs::Result<()> {
-/// # use adsabs::{Ads, search::Sort};
-/// # let api_token = "ADS_API_TOKEN";
-/// # let client = Ads::new(api_token)?;
-/// client.search("supernova").sort("date");
-/// # Ok(())
-/// # }
-/// ```
-///
-/// and
-///
-/// ```no_run
-/// # fn run() -> adsabs::Result<()> {
-/// # use adsabs::{Ads, search::Sort};
-/// # let api_token = "ADS_API_TOKEN";
-/// # let client = Ads::new(api_token)?;
-/// client.search("supernova").sort(Sort::desc("date"));
-/// # Ok(())
-/// # }
-/// ```
-///
-/// Ascending order can be requested using:
-///
-/// ```no_run
-/// # fn run() -> adsabs::Result<()> {
-/// # use adsabs::{Ads, search::Sort};
-/// # let api_token = "ADS_API_TOKEN";
-/// # let client = Ads::new(api_token)?;
-/// client.search("supernova").sort(Sort::asc("date"));
-/// # Ok(())
-/// # }
-/// ```
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[must_use]
-pub enum Sort {
-    Asc(String),
-    Desc(String),
-}
+#[cfg(feature = "blocking")]
+mod iter {
+    use super::{Result, Search, MAX_ROWS};
+    use serde::de::DeserializeOwned;
 
-impl Sort {
-    /// Build an ascending sort on a field.
-    pub fn asc(field: &str) -> Self {
-        Sort::Asc(field.to_owned())
+    /// An iterator over the results of a query with transparent support for
+    /// pagination.
+    #[allow(clippy::module_name_repetitions)]
+    #[must_use]
+    pub struct SearchIter<'ads, T: DeserializeOwned> {
+        pub(crate) query: Search<'ads>,
+        pub(crate) num_found: u64,
+        pub(crate) start: u64,
+        pub(crate) limit: Option<u64>,
+        pub(crate) docs: <Vec<T> as IntoIterator>::IntoIter,
     }
 
-    /// Build a descending sort on a field.
-    pub fn desc(field: &str) -> Self {
-        Sort::Desc(field.to_owned())
-    }
-}
+    impl<'ads, T: DeserializeOwned> SearchIter<'ads, T> {
+        /// Limit the total number of results returned.
+        ///
+        /// Every attempt will be made to minimize the number of API calls, so this
+        /// should be preferred to using the [`std::iter::Iterator::take`] method.
+        pub fn limit(mut self, limit: u64) -> Self {
+            self.limit = Some(limit);
+            self
+        }
 
-impl From<&str> for Sort {
-    fn from(s: &str) -> Self {
-        Sort::Desc(s.to_owned())
-    }
-}
+        #[inline]
+        fn page_size(&self) -> u64 {
+            MAX_ROWS.min(
+                self.limit
+                    .unwrap_or_else(|| self.query.rows.unwrap_or(MAX_ROWS)),
+            )
+        }
 
-impl ToString for Sort {
-    fn to_string(&self) -> String {
-        match self {
-            Sort::Asc(fl) => format!("{} asc", fl),
-            Sort::Desc(fl) => format!("{} desc", fl),
+        fn try_next(&mut self) -> Result<Option<T>> {
+            if let Some(doc) = self.docs.next() {
+                self.start += 1;
+                return Ok(Some(doc));
+            }
+
+            if self.start > 0
+                && (self.start >= self.num_found || self.start >= self.limit.unwrap_or(u64::MAX))
+            {
+                return Ok(None);
+            }
+
+            let response = self
+                .query
+                .clone()
+                .start(self.start)
+                .rows(self.page_size())
+                .send()?;
+            self.num_found = response.num_found;
+            self.start = response.start + 1;
+            self.docs = response.docs.into_iter();
+            Ok(self.docs.next())
+        }
+    }
+
+    impl<'ads, T: DeserializeOwned> Iterator for SearchIter<'ads, T> {
+        type Item = Result<T>;
+
+        fn next(&mut self) -> Option<Self::Item> {
+            match self.try_next() {
+                Ok(Some(doc)) => Some(Ok(doc)),
+                Ok(None) => None,
+                Err(err) => Some(Err(err)),
+            }
         }
     }
 }
 
-/// An iterator over the results of a query with transparent support for
-/// pagination.
-#[must_use]
-pub struct IterDocs<'ads> {
-    query: Query<'ads>,
-    num_found: u64,
-    start: u64,
-    limit: Option<u64>,
-    docs: <Vec<Document> as IntoIterator>::IntoIter,
-}
-
-impl<'ads> IterDocs<'ads> {
-    /// Limit the total number of results returned.
+#[cfg(feature = "async")]
+impl<'ads> Search<'ads> {
+    /// Asynchronously submit the seach query.
     ///
-    /// Every attempt will be made to minimize the number of API calls, so this
-    /// should be preferred to using the [`std::iter::Iterator::take`] method.
-    pub fn limit(mut self, limit: u64) -> Self {
-        self.limit = Some(limit);
-        self
+    /// # Errors
+    ///
+    /// This method fails on HTTP errors, with messages from the server.
+    pub async fn send_async<T: DeserializeOwned>(&self) -> Result<Response<T>> {
+        let data: serde_json::Value = self
+            .client
+            .async_get("search/query", Some(self))
+            .await?
+            .json()
+            .await?;
+        Ok(serde_json::from_value(data["response"].clone())?)
     }
 
-    #[inline]
-    fn page_size(&self) -> u64 {
-        MAX_ROWS.min(
-            self.limit
-                .unwrap_or_else(|| self.query.rows.unwrap_or(MAX_ROWS)),
-        )
-    }
-
-    fn try_next(&mut self) -> Result<Option<Document>> {
-        if let Some(doc) = self.docs.next() {
-            self.start += 1;
-            return Ok(Some(doc));
-        }
-
-        if self.start > 0
-            && (self.start >= self.num_found || self.start >= self.limit.unwrap_or(u64::MAX))
-        {
-            return Ok(None);
-        }
-
-        let response = self
-            .query
-            .clone()
-            .start(self.start)
-            .rows(self.page_size())
-            .send()?;
-        self.num_found = response.num_found;
-        self.start = response.start + 1;
-        self.docs = response.docs.into_iter();
-        Ok(self.docs.next())
-    }
-}
-
-impl<'ads> Iterator for IterDocs<'ads> {
-    type Item = Result<Document>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self.try_next() {
-            Ok(Some(doc)) => Some(Ok(doc)),
-            Ok(None) => None,
-            Err(err) => Some(Err(err)),
-        }
+    /// Get an asynchronous stream over all search results with transparent
+    /// support for pagination.
+    #[must_use]
+    pub fn stream<T: 'ads + DeserializeOwned>(
+        self,
+    ) -> std::pin::Pin<Box<impl Stream<Item = Result<T>> + 'ads>> {
+        use async_stream::try_stream;
+        let mut offset = self.start.unwrap_or(0);
+        let per_page = self.rows.unwrap_or(10);
+        Box::pin(try_stream! {
+            loop {
+                let builder = self.clone();
+                let current = builder.start(offset).rows(per_page).send_async().await?;
+                let num = current.docs.len();
+                if num == 0 {
+                    break;
+                }
+                for doc in current.docs  {
+                    yield doc;
+                }
+                offset += num as u64;
+            }
+        })
     }
 }
 
@@ -449,17 +318,10 @@ fn fl_defaults<S: serde::Serializer>(items: &[String], serializer: S) -> Result<
     }
 }
 
-fn comma_separated<T: ToString, S: serde::Serializer>(
-    items: &[T],
-    serializer: S,
-) -> Result<S::Ok, S::Error> {
-    let items = items.iter().map(|x| x.to_string()).collect::<Vec<_>>();
-    serializer.serialize_str(&items.join(","))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::model::{Database, Document};
     use chrono::Datelike;
 
     #[test]
@@ -493,20 +355,19 @@ mod tests {
                 },
                 {
                     \"id\": \"1877482\"
-                }            
+                }
             ]
         }";
-        let response: Response = serde_json::from_str(data).unwrap();
+        let response: Response<Document> = serde_json::from_str(data).unwrap();
         assert_eq!(response.num_found, 194);
         assert_eq!(response.start, 12);
         assert_eq!(response.docs.len(), 2);
-        assert_eq!(response.docs[0].id.as_ref().unwrap(), "312911");
     }
 
     #[test]
     fn basic_query() {
         let client = crate::Ads::new("token").unwrap();
-        let query = Query::new(&client, "au:foreman-mackey")
+        let query = Search::new(&client, "au:foreman-mackey")
             .rows(10)
             .start(5)
             .fl("id")
@@ -530,7 +391,7 @@ mod tests {
     #[test]
     fn vec_fls() {
         let client = crate::Ads::new("token").unwrap();
-        let query = Query::new(&client, "au:foreman-mackey").fl("id,author");
+        let query = Search::new(&client, "au:foreman-mackey").fl("id,author");
 
         assert_eq!(
             serde_json::to_value(query).unwrap(),

@@ -1,5 +1,5 @@
-//! An example showing basic usage examples from the docs.
-use adsabs::prelude::*;
+//! An example showing how to access the Search API.
+use adsabs::{prelude::*, Document};
 
 fn main() -> Result<(), AdsError> {
     let client = Ads::from_env()?;
@@ -8,10 +8,10 @@ fn main() -> Result<(), AdsError> {
     for doc in client
         .search("supernova")
         .sort("citation_count")
-        .iter_docs()
+        .iter()
         .limit(5)
     {
-        let doc = doc?;
+        let doc: Document = doc?;
         println!(
             "{} ({}): {}",
             doc.first_author.unwrap(),
@@ -24,10 +24,10 @@ fn main() -> Result<(), AdsError> {
     for doc in client
         .search("author:\"^Dalcanton, J\"")
         .sort("citation_count")
-        .iter_docs()
+        .iter()
         .limit(5)
     {
-        let doc = doc?;
+        let doc: Document = doc?;
         println!(
             "{} ({}): {}",
             doc.first_author.unwrap(),
@@ -40,10 +40,10 @@ fn main() -> Result<(), AdsError> {
     for doc in client
         .search("aff:\"Flatiron Institute\"")
         .sort(Sort::Asc("date".to_owned()))
-        .iter_docs()
+        .iter()
         .limit(5)
     {
-        let doc = doc?;
+        let doc: Document = doc?;
         println!(
             "{} ({}): {}",
             doc.first_author.unwrap(),

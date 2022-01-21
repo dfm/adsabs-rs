@@ -27,10 +27,10 @@
 //! let client = Ads::new("ADS_API_TOKEN")?;
 //! for doc in client.search("supernova")
 //!     .sort("citation_count")
-//!     .iter_docs()
+//!     .iter()
 //!     .limit(5)
 //! {
-//!     println!("{:?}", doc?.title);
+//!     println!("{:?}", doc?);
 //! }
 //! # Ok(())
 //! # }
@@ -49,8 +49,8 @@
 //! use adsabs::prelude::*;
 //!
 //! let client = Ads::new("ADS_API_TOKEN")?;
-//! for doc in client.search("author:\"^Dalcanton, J\"").iter_docs().limit(5) {
-//!     println!("{:?}", doc?.title);
+//! for doc in client.search("author:\"^Dalcanton, J\"").iter().limit(5) {
+//!     println!("{:?}", doc?);
 //! }
 //! # Ok(())
 //! # }
@@ -98,17 +98,18 @@
 //! [ADS settings page]: https://ui.adsabs.harvard.edu/user/settings/token
 
 mod auth;
+mod endpoints;
 mod error;
-pub mod search;
-pub use error::{AdsError, Result};
+mod model;
 
-use reqwest::{
-    blocking::{Client, Response},
-    header,
-};
+pub use endpoints::{export, search, Sort};
+pub use error::{AdsError, Result};
+pub use model::Document;
+
+use reqwest::header;
 
 pub mod prelude {
-    pub use crate::{search::Sort, Ads, AdsError};
+    pub use crate::{export::FormatType, Ads, AdsError, Document, Sort};
 }
 
 const API_BASE_URL: &str = "https://api.adsabs.harvard.edu/v1/";
@@ -135,7 +136,10 @@ const API_BASE_URL: &str = "https://api.adsabs.harvard.edu/v1/";
 #[derive(Clone)]
 pub struct Ads {
     base_url: reqwest::Url,
-    client: std::rc::Rc<Client>,
+    #[cfg(feature = "blocking")]
+    blocking_client: std::rc::Rc<reqwest::blocking::Client>,
+    #[cfg(feature = "async")]
+    async_client: std::rc::Rc<reqwest::Client>,
 }
 
 /// A builder that can be used to create an [`Ads`] interface with custom
@@ -222,13 +226,25 @@ impl AdsBuilder {
         auth_value.set_sensitive(true);
         let mut headers = header::HeaderMap::new();
         headers.append(header::AUTHORIZATION, auth_value);
-        let client = Client::builder()
-            .user_agent(self.user_agent)
-            .default_headers(headers)
+
+        #[cfg(feature = "blocking")]
+        let blocking_client = reqwest::blocking::Client::builder()
+            .user_agent(self.user_agent.clone())
+            .default_headers(headers.clone())
             .build()?;
+
+        #[cfg(feature = "async")]
+        let async_client = reqwest::Client::builder()
+            .user_agent(self.user_agent.clone())
+            .default_headers(headers.clone())
+            .build()?;
+
         Ok(Ads {
             base_url: reqwest::Url::parse(&self.base_url)?,
-            client: std::rc::Rc::new(client),
+            #[cfg(feature = "blocking")]
+            blocking_client: std::rc::Rc::new(blocking_client),
+            #[cfg(feature = "async")]
+            async_client: std::rc::Rc::new(async_client),
         })
     }
 }
@@ -261,36 +277,164 @@ impl Ads {
     }
 
     /// Constructs a query for Search API endpoint that can be customized using
-    /// a [`search::Query`].
-    pub fn search(&self, query: &str) -> search::Query {
-        search::Query::new(self, query)
+    /// a [`search::Search`].
+    pub fn search(&self, query: &str) -> search::Search {
+        search::Search::new(self, query)
     }
 
-    /// Execute a general `GET` request to the API.
+    /// Constructs a query for Export API endpoint that can be customized using
+    /// a [`export::Export`].
+    pub fn export(&self, format_type: export::FormatType, bibcode: &[String]) -> export::Export {
+        export::Export::new(self, format_type, bibcode)
+    }
+
+    fn absolute_url(&self, url: &str) -> Result<reqwest::Url> {
+        Ok(self.base_url.join(url)?)
+    }
+}
+
+#[cfg(feature = "blocking")]
+impl Ads {
+    /// Execute a blocking `GET` request to the API.
     ///
     /// # Errors
     ///
     /// This method fails when the URL cannot be parsed or on HTTP errors.
-    pub fn get<A, P>(&self, path: A, parameters: Option<&P>) -> Result<Response>
-    where
-        A: AsRef<str>,
-        P: serde::Serialize + ?Sized,
-    {
-        self._get(self.absolute_url(path)?, parameters)
-    }
-
-    fn _get<P>(&self, url: impl reqwest::IntoUrl, parameters: Option<&P>) -> Result<Response>
+    pub fn blocking_get<P>(
+        &self,
+        path: &str,
+        parameters: Option<&P>,
+    ) -> Result<reqwest::blocking::Response>
     where
         P: serde::Serialize + ?Sized,
     {
-        let mut request = self.client.get(url);
+        let mut request = self.blocking_client.get(self.absolute_url(path)?);
         if let Some(parameters) = parameters {
             request = request.query(parameters);
         }
         Ok(request.send()?)
     }
 
-    fn absolute_url(&self, url: impl AsRef<str>) -> Result<reqwest::Url> {
-        Ok(self.base_url.join(url.as_ref())?)
+    /// Execute a blocking `POST` request to the API.
+    ///
+    /// # Errors
+    ///
+    /// This method fails when the URL cannot be parsed or on HTTP errors.
+    pub fn blocking_post<P>(
+        &self,
+        path: &str,
+        parameters: Option<&P>,
+    ) -> Result<reqwest::blocking::Response>
+    where
+        P: serde::Serialize + ?Sized,
+    {
+        let mut request = self.blocking_client.post(self.absolute_url(path)?);
+        if let Some(parameters) = parameters {
+            request = request.json(parameters);
+        }
+        Ok(request.send()?)
+    }
+
+    /// Execute a blocking `PUT` request to the API.
+    ///
+    /// # Errors
+    ///
+    /// This method fails when the URL cannot be parsed or on HTTP errors.
+    pub fn blocking_put<P>(
+        &self,
+        path: &str,
+        parameters: Option<&P>,
+    ) -> Result<reqwest::blocking::Response>
+    where
+        P: serde::Serialize + ?Sized,
+    {
+        let mut request = self.blocking_client.put(self.absolute_url(path)?);
+        if let Some(parameters) = parameters {
+            request = request.json(parameters);
+        }
+        Ok(request.send()?)
+    }
+
+    /// Execute a blocking `DELETE` request to the API.
+    ///
+    /// # Errors
+    ///
+    /// This method fails when the URL cannot be parsed or on HTTP errors.
+    pub fn blocking_delete(&self, path: &str) -> Result<reqwest::blocking::Response> {
+        let request = self.blocking_client.delete(self.absolute_url(path)?);
+        Ok(request.send()?)
+    }
+}
+
+#[cfg(feature = "async")]
+impl Ads {
+    /// Execute an async `GET` request to the API.
+    ///
+    /// # Errors
+    ///
+    /// This method fails when the URL cannot be parsed or on HTTP errors.
+    pub async fn async_get<P>(
+        &self,
+        path: &str,
+        parameters: Option<&P>,
+    ) -> Result<reqwest::Response>
+    where
+        P: serde::Serialize + ?Sized,
+    {
+        let mut request = self.async_client.get(self.absolute_url(path)?);
+        if let Some(parameters) = parameters {
+            request = request.query(parameters);
+        }
+        Ok(request.send().await?)
+    }
+
+    /// Execute an async `POST` request to the API.
+    ///
+    /// # Errors
+    ///
+    /// This method fails when the URL cannot be parsed or on HTTP errors.
+    pub async fn async_post<P>(
+        &self,
+        path: &str,
+        parameters: Option<&P>,
+    ) -> Result<reqwest::Response>
+    where
+        P: serde::Serialize + ?Sized,
+    {
+        let mut request = self.async_client.post(self.absolute_url(path)?);
+        if let Some(parameters) = parameters {
+            request = request.json(parameters);
+        }
+        Ok(request.send().await?)
+    }
+
+    /// Execute an async `PUT` request to the API.
+    ///
+    /// # Errors
+    ///
+    /// This method fails when the URL cannot be parsed or on HTTP errors.
+    pub async fn async_put<P>(
+        &self,
+        path: &str,
+        parameters: Option<&P>,
+    ) -> Result<reqwest::Response>
+    where
+        P: serde::Serialize + ?Sized,
+    {
+        let mut request = self.async_client.put(self.absolute_url(path)?);
+        if let Some(parameters) = parameters {
+            request = request.json(parameters);
+        }
+        Ok(request.send().await?)
+    }
+
+    /// Execute an async `DELETE` request to the API.
+    ///
+    /// # Errors
+    ///
+    /// This method fails when the URL cannot be parsed or on HTTP errors.
+    pub async fn async_delete(&self, path: &str) -> Result<reqwest::Response> {
+        let request = self.async_client.delete(self.absolute_url(path)?);
+        Ok(request.send().await?)
     }
 }
