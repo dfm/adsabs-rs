@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use super::{comma_separated, Sort};
 use crate::error::Result;
 use serde::{Deserialize, Serialize};
@@ -17,7 +19,7 @@ pub struct Export<'ads> {
     format: Option<String>,
 }
 
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[must_use]
 #[non_exhaustive]
 #[serde(rename_all = "lowercase")]
@@ -40,6 +42,13 @@ pub enum FormatType {
     SoPh,
     VOTable,
     Custom,
+}
+
+impl FromStr for FormatType {
+    type Err = crate::AdsError;
+    fn from_str(s: &str) -> Result<Self> {
+        Ok(serde_json::from_str(&format!("\"{}\"", s))?)
+    }
 }
 
 /// A response from the export API.

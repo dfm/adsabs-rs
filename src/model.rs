@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 /// A `Document` returned from a search query. All of the fields are `Option`s
 /// and will only be `Some` if that field was requested in the query using
 /// [`Query::fl`].
-#[adsabs_macro::make_optional]
+#[discretionary::make_optional]
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
 pub struct Document {
     #[serde(rename = "abstract")]
